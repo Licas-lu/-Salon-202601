@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一期知识沙龙投票系统</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:#f5f3ee;color:#1a1a2e;min-height:100vh;font-size:14px}
+
+/* ── LOADING ── */
+.loading-overlay{position:fixed;inset:0;background:#f5f3ee;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;gap:14px;transition:opacity .3s}
+.loading-overlay.hide{opacity:0;pointer-events:none}
+.spinner{width:34px;height:34px;border:3px solid #e8e4dc;border-top-color:#4a3fd4;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:#aaa}
+
+/* ── NAV ── */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;background:#f5f3ee;border-bottom:1px solid #e8e4dc;position:sticky;top:0;z-index:100}
+.nav-logo{font-family:'Playfair Display',serif;font-size:14px;color:#4a3fd4;font-weight:700;text-align:center;flex:2}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-status{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.ns-waiting{background:#f1efe8;color:#aaa}
+.ns-submitting{background:#eeeefe;color:#4a3fd4}
+.ns-voting{background:#e2f5f0;color:#1a8a6e}
+.ns-ended{background:#fde8e8;color:#c0392b}
+.nav-icon{width:36px;height:36px;border-radius:50%;background:#e8e4dc;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:calc(100vh - 56px)}.screen.active{display:block}
+
+/* ── WAITING SCREEN ── */
+.waiting-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 56px);padding:32px 24px;text-align:center}
+.waiting-icon{font-size:48px;margin-bottom:20px}
+.waiting-title{font-family:'Playfair Display',serif;font-size:24px;color:#1a1a2e;margin-bottom:10px}
+.waiting-sub{font-size:13px;color:#aaa;line-height:1.7}
+
+/* ── GROUP SELECT SCREEN ── */
+.group-select-wrap{padding:28px 20px}
+.gs-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;color:#4a3fd4;background:#eeeefe;padding:4px 10px;border-radius:4px;margin-bottom:12px}
+.gs-title{font-family:'Playfair Display',serif;font-size:24px;color:#1a1a2e;margin-bottom:8px}
+.gs-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:28px}
+.group-btn-list{display:flex;flex-direction:column;gap:10px}
+.group-btn{width:100%;padding:16px 20px;border-radius:14px;border:1.5px solid #ede9e0;background:#fff;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .2s;font-family:inherit}
+.group-btn:hover{border-color:#4a3fd4;background:#fdfcff}
+.group-btn:active{transform:scale(.98)}
+.gb-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.gb-dot-1{background:#4a3fd4}.gb-dot-2{background:#c0392b}.gb-dot-3{background:#b7770d}.gb-dot-4{background:#1a8a6e}
+.gb-name{font-size:15px;font-weight:700;color:#1a1a2e}
+.gb-count{font-size:12px;color:#aaa;margin-left:auto}
+.gb-arrow{color:#ccc;font-size:16px}
+
+/* ── MAIN APP ── */
+.app-wrap{padding:0 20px 90px}
+.panel{display:none}.panel.active{display:block}
+
+/* tab bar */
+.tab-bar{display:flex;border-bottom:1px solid #e8e4dc;margin:0 -20px;padding:0 20px;background:#f5f3ee;position:sticky;top:56px;z-index:90}
+.tab{flex:1;padding:12px 4px;font-size:12px;font-weight:600;color:#bbb;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:inherit}
+.tab.active{color:#4a3fd4;border-bottom-color:#4a3fd4}
+
+/* ── SUBMIT PANEL ── */
+.panel-header{padding:20px 0 16px}
+.ph-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;color:#4a3fd4;background:#eeeefe;padding:3px 9px;border-radius:4px;margin-bottom:8px}
+.ph-title{font-family:'Playfair Display',serif;font-size:22px;color:#1a1a2e;margin-bottom:6px;line-height:1.2}
+.ph-desc{font-size:12px;color:#999;line-height:1.6}
+
+.scene-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.scene-item{background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #ede9e0;display:flex;gap:10px;align-items:flex-start}
+.scene-item.editing{border-color:#4a3fd4}
+.scene-num{font-size:11px;font-weight:400;color:#4a3fd4;background:#eeeefe;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.scene-content{flex:1;min-width:0}
+.scene-text{font-size:14px;color:#1a1a2e;line-height:1.5;word-break:break-all;white-space:pre-wrap}
+.scene-textarea{width:100%;font-size:14px;color:#1a1a2e;border:none;background:none;outline:none;resize:none;font-family:inherit;line-height:1.5;min-height:40px;overflow:hidden}
+.scene-hint{font-size:11px;color:#ccc;margin-top:4px}
+.scene-actions{display:flex;gap:6px;flex-shrink:0}
+.sa-btn{width:28px;height:28px;border-radius:7px;border:1px solid #e8e4dc;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sa-btn:hover{border-color:#4a3fd4}
+.sa-del:hover{border-color:#e57373;background:#fff5f5}
+.sa-del:hover svg{stroke:#e57373}
+
+.add-scene-btn{width:100%;padding:12px;border-radius:12px;border:1.5px dashed #d0ccc4;background:none;font-size:13px;color:#aaa;cursor:pointer;transition:all .15s;font-family:inherit;margin-bottom:16px}
+.add-scene-btn:hover{border-color:#4a3fd4;color:#4a3fd4;background:#f5f4fe}
+.add-scene-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.limit-tip{font-size:12px;color:#b7770d;background:#fef3e2;padding:8px 12px;border-radius:8px;margin-bottom:16px;text-align:center}
+
+/* ── VOTE PANEL ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:16px 0}
+.stat-card{background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #ede9e0}
+.stat-card.hl{background:#fef3e2;border-color:#f0d898}
+.stat-label{font-size:11px;color:#bbb;margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:400;color:#1a1a2e;line-height:1}
+.stat-card.hl .stat-value{color:#c08a10}
+
+.group-section{margin-bottom:16px}
+.gs-label{font-size:11px;font-weight:700;letter-spacing:.04em;color:#aaa;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.gs-line{flex:1;height:1px;background:#ede9e0}
+
+.vote-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:8px;border:1px solid #ede9e0;transition:border-color .2s,background .2s}
+.vote-card.voted{border-color:#4a3fd4;background:#fdfcff}
+.vc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.vc-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.vc-b1{background:#eeeefe;color:#4a3fd4}.vc-b2{background:#fde8e8;color:#c0392b}.vc-b3{background:#fef3e2;color:#b7770d}.vc-b4{background:#e2f5f0;color:#1a8a6e}
+.vc-voted-tag{font-size:11px;font-weight:400;color:#4a3fd4}
+.vc-count-tag{font-size:11px;color:#ccc}
+.vc-name{font-size:15px;font-weight:400;color:#1a1a2e;margin-bottom:10px;line-height:1.4;word-break:break-all}
+.vc-bar-bg{height:4px;border-radius:2px;background:#e8e4dc;overflow:hidden;margin-bottom:10px}
+.vc-bar-fill{height:4px;border-radius:2px;background:#4a3fd4;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.vc-support{display:flex;justify-content:space-between;font-size:11px;color:#bbb;margin-bottom:8px}
+.vc-btn{width:100%;padding:12px;border-radius:11px;border:none;background:#4a3fd4;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:background .15s;font-family:inherit}
+.vc-btn:hover:not(:disabled){background:#3a30b0}
+.vc-btn:disabled{background:#ede9e0;color:#bbb;cursor:not-allowed}
+
+/* ── BOARD PANEL ── */
+.board-header{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 0 14px}
+.live-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.06em;color:#4a3fd4;background:#eeeefe;padding:3px 9px;border-radius:20px;margin-bottom:5px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:#4a3fd4;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.live-sub{font-size:10px;color:#bbb;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
+.live-total{font-size:30px;font-weight:400;color:#1a1a2e;line-height:1}
+
+.winner-banner{background:#fef3e2;border:1px solid #f0d898;border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.wb-trophy{font-size:20px}
+.wb-label{font-size:11px;color:#b7770d;margin-bottom:2px}
+.wb-name{font-size:14px;font-weight:400;color:#1a1a2e}
+
+.board-row{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:7px;border:1px solid #ede9e0;transition:all .4s cubic-bezier(.4,0,.2,1)}
+.board-row.top5{background:#fef3e2;border-color:#f0d898}
+.br-rank{font-size:16px;font-weight:400;color:#ccc;width:24px;text-align:center;flex-shrink:0}
+.br-medal{font-size:22px;width:28px;text-align:center;flex-shrink:0}
+.br-main{flex:1;min-width:0}
+.br-name{font-size:14px;font-weight:400;color:#1a1a2e;margin-bottom:5px;line-height:1.3;word-break:break-all}
+.br-bar-bg{height:4px;border-radius:2px;background:#e8e4dc;overflow:hidden}
+.br-bar-fill{height:4px;border-radius:2px;background:#4a3fd4;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.br-right{text-align:right;flex-shrink:0}
+.br-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;margin-bottom:3px}
+.br-votes{font-size:15px;font-weight:400;color:#1a1a2e;line-height:1}
+.br-label{font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:.04em}
+
+@keyframes pop{0%{transform:scale(0) rotate(-20deg);opacity:0}60%{transform:scale(1.3) rotate(5deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes shine{0%,100%{opacity:1}50%{opacity:.55}}
+.medal-pop{animation:pop .5s cubic-bezier(.4,0,.2,1) both}
+.medal-shine{animation:shine 2.5s ease-in-out infinite}
+
+/* ── ADMIN SCREEN ── */
+.admin-login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 56px);padding:32px 24px}
+.admin-login-card{background:#fff;border-radius:18px;padding:28px 24px;border:1px solid #ede9e0;width:100%;max-width:340px}
+.alc-title{font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:6px}
+.alc-sub{font-size:12px;color:#aaa;margin-bottom:20px}
+.admin-input{width:100%;font-size:15px;padding:12px 14px;border-radius:10px;border:1px solid #e8e4dc;background:#f8f7f4;color:#1a1a2e;outline:none;font-family:inherit;margin-bottom:12px;transition:border-color .15s}
+.admin-input:focus{border-color:#4a3fd4;background:#fff}
+.admin-submit-btn{width:100%;padding:13px;border-radius:11px;border:none;background:#4a3fd4;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s}
+.admin-submit-btn:hover{background:#3a30b0}
+.admin-err{font-size:12px;color:#c0392b;text-align:center;margin-top:8px;display:none}
+
+.admin-wrap{padding:16px 20px 60px;max-width:600px;margin:0 auto}
+.admin-section{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid #ede9e0}
+.as-title{font-size:12px;font-weight:700;letter-spacing:.05em;color:#aaa;margin-bottom:14px;text-transform:uppercase}
+.as-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px}
+.as-row:last-child{margin-bottom:0}
+.as-label{font-size:13px;color:#555}
+.as-value{font-size:15px;font-weight:700;color:#1a1a2e}
+
+.phase-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.phase-btn{padding:11px;border-radius:10px;border:1px solid #e8e4dc;background:#fff;font-size:13px;font-weight:700;color:#555;cursor:pointer;font-family:inherit;transition:all .15s}
+.phase-btn:hover:not(:disabled){border-color:#4a3fd4;color:#4a3fd4}
+.phase-btn.danger{border-color:#fde8e8;color:#c0392b}
+.phase-btn.danger:hover:not(:disabled){background:#fff5f5}
+.phase-btn.primary{background:#4a3fd4;border-color:#4a3fd4;color:#fff}
+.phase-btn.primary:hover:not(:disabled){background:#3a30b0}
+.phase-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.votes-ctrl{display:flex;align-items:center;gap:10px}
+.ctrl-btn{width:32px;height:32px;border-radius:8px;border:1px solid #e8e4dc;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#4a3fd4;font-weight:700;transition:background .15s}
+.ctrl-btn:hover{background:#eeeefe}
+.ctrl-val{font-size:20px;font-weight:700;color:#1a1a2e;min-width:32px;text-align:center}
+
+.progress-bars{display:flex;flex-direction:column;gap:8px}
+.pg-row{display:flex;align-items:center;gap:10px}
+.pg-label{font-size:12px;color:#555;width:56px;flex-shrink:0}
+.pg-track{flex:1;height:6px;border-radius:3px;background:#e8e4dc;overflow:hidden}
+.pg-fill{height:6px;border-radius:3px;background:#4a3fd4;transition:width .4s ease}
+.pg-count{font-size:12px;color:#aaa;width:28px;text-align:right;flex-shrink:0}
+
+.export-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.export-num-input{width:60px;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid #e8e4dc;background:#f8f7f4;color:#1a1a2e;outline:none;font-family:inherit;text-align:center}
+.export-num-input:focus{border-color:#4a3fd4}
+.export-btn{padding:10px 18px;border-radius:10px;border:none;background:#4a3fd4;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:background .15s}
+.export-btn:hover{background:#3a30b0}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#f5f3ee;border-top:1px solid #e8e4dc;display:flex;padding:8px 0 20px;z-index:100}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:none;padding:5px;font-family:inherit}
+.bn-label{font-size:10px;color:#bbb;font-weight:500}
+.bn-item.active .bn-label{color:#4a3fd4;font-weight:700}
+.bn-icon{opacity:.25;transition:opacity .15s}
+.bn-item.active .bn-icon{opacity:1}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1}
+
+.empty-hint{font-size:13px;color:#ccc;text-align:center;padding:40px 0}
+
+/* ── GUEST VOTE ── */
+.guest-vote-btn{width:100%;padding:14px;border-radius:13px;border:none;background:linear-gradient(135deg,#c9890a,#e8b84b,#c9890a);font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 12px rgba(201,137,10,.35);letter-spacing:.04em;transition:opacity .15s;margin-bottom:16px}
+.guest-vote-btn:hover{opacity:.88}
+.guest-vote-btn.is-guest{background:linear-gradient(135deg,#b07c09,#d4a73a,#b07c09)}
+.guest-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.06em;color:#b07c09;background:#fef3e2;border:1px solid #f0d898;padding:3px 9px;border-radius:20px;margin-bottom:12px}
+
+/* guest modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-card{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:340px;transform:translateY(12px);transition:transform .2s}
+.modal-overlay.open .modal-card{transform:translateY(0)}
+.modal-title{font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:4px}
+.modal-sub{font-size:12px;color:#aaa;margin-bottom:18px;line-height:1.5}
+.modal-input{width:100%;font-size:15px;padding:12px 14px;border-radius:10px;border:1px solid #e8e4dc;background:#f8f7f4;color:#1a1a2e;outline:none;font-family:inherit;margin-bottom:10px;transition:border-color .15s}
+.modal-input:focus{border-color:#c9890a;background:#fff}
+.modal-err{font-size:12px;color:#c0392b;margin-bottom:10px;display:none}
+.modal-btns{display:flex;gap:8px}
+.modal-cancel{flex:1;padding:12px;border-radius:10px;border:1px solid #e8e4dc;background:#fff;font-size:13px;font-weight:600;color:#888;cursor:pointer;font-family:inherit}
+.modal-confirm{flex:2;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#c9890a,#e8b84b);font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit}
+
+/* dual bar */
+.vc-bar-dual{position:relative;height:6px;border-radius:3px;background:#e8e4dc;overflow:hidden;margin-bottom:10px}
+.vc-bar-normal{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:#4a3fd4;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.vc-bar-guest{position:absolute;top:0;height:6px;border-radius:3px 0 0 3px;background:linear-gradient(90deg,#c9890a,#e8b84b);transition:width .5s cubic-bezier(.4,0,.2,1),left .5s cubic-bezier(.4,0,.2,1)}
+.vc-score-row{display:flex;justify-content:space-between;font-size:11px;color:#bbb;margin-bottom:6px}
+.vc-guest-score{color:#c9890a;font-weight:400}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">连接中...</div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div style="display:flex;align-items:center;gap:8px;flex:1">
+    <button style="background:none;border:none;cursor:pointer;padding:4px;display:flex;flex-direction:column;gap:4px" onclick="toggleAdmin()">
+      <span style="display:block;width:16px;height:1.5px;background:#4a3fd4;border-radius:2px"></span>
+      <span style="display:block;width:16px;height:1.5px;background:#4a3fd4;border-radius:2px"></span>
+      <span style="display:block;width:16px;height:1.5px;background:#4a3fd4;border-radius:2px"></span>
+    </button>
+  </div>
+  <span class="nav-logo">第一期知识沙龙</span>
+  <div class="nav-right" style="flex:1;justify-content:flex-end">
+    <span class="nav-status ns-waiting" id="nav-status">等待开始</span>
+    <div class="nav-icon" id="nav-avatar" onclick="changeGroup()" title="点击切换小组" style="cursor:pointer;position:relative;overflow:visible;background:transparent;border:none;width:40px;height:40px">
+      <!-- 小芝士头像 -->
+      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <!-- 圆形底板 -->
+        <circle cx="20" cy="20" r="19" fill="#fffbe6" stroke="#f5c842" stroke-width="1.2"/>
+        <!-- 奶酪身体（三角形，圆角） -->
+        <path d="M20 7 L32 30 Q32 32 30 32 L10 32 Q8 32 8 30 Z" fill="#f5c842"/>
+        <!-- 奶酪高光 -->
+        <path d="M20 9 L30 29 Q30 30.5 28.5 30.5 L11.5 30.5 Q10 30.5 10 29 Z" fill="#f9d94e" opacity="0.5"/>
+        <!-- 奶酪洞（三个） -->
+        <circle cx="16" cy="24" r="2" fill="#e8a800" opacity="0.7"/>
+        <circle cx="23" cy="26" r="1.5" fill="#e8a800" opacity="0.7"/>
+        <circle cx="20" cy="19" r="1.2" fill="#e8a800" opacity="0.7"/>
+        <!-- 眼睛（黑色） -->
+        <circle cx="17" cy="21" r="1.3" fill="#1a1a2e"/>
+        <circle cx="23" cy="21" r="1.3" fill="#1a1a2e"/>
+        <!-- 眼白高光 -->
+        <circle cx="17.5" cy="20.5" r="0.45" fill="#fff"/>
+        <circle cx="23.5" cy="20.5" r="0.45" fill="#fff"/>
+        <!-- 圆形眼镜框（黑色） -->
+        <circle cx="17" cy="21" r="2.4" fill="none" stroke="#1a1a2e" stroke-width="0.9"/>
+        <circle cx="23" cy="21" r="2.4" fill="none" stroke="#1a1a2e" stroke-width="0.9"/>
+        <!-- 眼镜鼻梁 -->
+        <path d="M19.4 21 L20.6 21" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round"/>
+        <!-- 眼镜腿 -->
+        <path d="M14.6 21 Q13 20.5 12.5 20" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+        <path d="M25.4 21 Q27 20.5 27.5 20" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+        <!-- 嘴巴（微笑） -->
+        <path d="M18.5 24.2 Q20 25.4 21.5 24.2" stroke="#1a1a2e" stroke-width="0.8" stroke-linecap="round" fill="none"/>
+        <!-- 领结 -->
+        <path d="M18.5 28.5 L20 27.4 L21.5 28.5 L20 29.6 Z" fill="#1a1a2e"/>
+        <circle cx="20" cy="28.5" r="0.7" fill="#1a1a2e"/>
+        <!-- 手（左） -->
+        <path d="M10.5 27 Q9 25 8.5 23.5" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+        <path d="M8.5 23.5 Q8 22.5 9 22.2" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+        <!-- 手（右） -->
+        <path d="M29.5 27 Q31 25 31.5 23.5" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+        <path d="M31.5 23.5 Q32 22.5 31 22.2" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+        <!-- 腿（左） -->
+        <path d="M14 32 Q13.5 34.5 12.5 36" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+        <!-- 腿（右） -->
+        <path d="M26 32 Q26.5 34.5 27.5 36" stroke="#1a1a2e" stroke-width="0.9" stroke-linecap="round" fill="none"/>
+      </svg>
+      <span id="nav-group-badge" style="display:none;position:absolute;bottom:-2px;right:-4px;font-size:8px;font-weight:700;background:#4a3fd4;color:#fff;border-radius:4px;padding:1px 3px;line-height:1.3"></span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: WAITING -->
+<div class="screen active" id="screen-waiting">
+  <div class="waiting-wrap">
+    <div class="waiting-icon">⏳</div>
+    <div class="waiting-title">等待活动开始</div>
+    <div class="waiting-sub">主持人将很快开启场景录入环节<br>请稍候片刻</div>
+  </div>
+</div>
+
+<!-- SCREEN: GROUP SELECT -->
+<div class="screen" id="screen-groupselect">
+  <div class="group-select-wrap">
+    <div class="gs-badge">《业务提效，AI从哪里切入》</div>
+    <div class="gs-title">找到你最需要的AI场景</div>
+    <p class="gs-desc">请选择你所在的小组，进入后填写本组的 AI 应用场景。<br>选择后可随时点击右上角头像图标切换小组。</p>
+    <div class="group-btn-list" id="group-btn-list"></div>
+  </div>
+</div>
+
+<!-- SCREEN: MAIN APP -->
+<div class="screen" id="screen-main">
+  <div class="tab-bar">
+    <button class="tab active" id="tab-submit" onclick="switchTab('submit')">场景录入</button>
+    <button class="tab" id="tab-vote" onclick="switchTab('vote')">投票</button>
+    <button class="tab" id="tab-board" onclick="switchTab('board')">榜单</button>
+  </div>
+  <div class="app-wrap">
+    <!-- SUBMIT -->
+    <div class="panel active" id="panel-submit">
+      <div class="panel-header">
+        <div class="ph-badge">PHASE: SUBMISSION</div>
+        <div class="ph-title">填写本组 AI 场景</div>
+        <div class="ph-desc">请填写你们认为具备落地条件、能为业务提效的 AI 场景（每组最多 5 个）</div>
+      </div>
+      <div class="scene-list" id="scene-list"></div>
+      <button class="add-scene-btn" id="add-scene-btn" onclick="addScene()">+ 添加场景</button>
+      <div class="limit-tip" id="limit-tip" style="display:none">已达到本组最多 5 个场景的上限</div>
+    </div>
+    <!-- VOTE -->
+    <div class="panel" id="panel-vote">
+      <!-- 嘉宾投票入口 -->
+      <div id="guest-vote-area" style="padding:16px 0 4px">
+        <button class="guest-vote-btn" id="guest-vote-btn" onclick="openGuestModal()">
+          ✦ 嘉宾专属投票通道
+        </button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">参与人数</div><div class="stat-value" id="sv-participants">-</div></div>
+        <div class="stat-card"><div class="stat-label">人均票数</div><div class="stat-value" id="sv-per">3</div></div>
+        <div class="stat-card"><div class="stat-label">累计票数</div><div class="stat-value" id="sv-total">0</div></div>
+        <div class="stat-card hl"><div class="stat-label">我的剩余票数</div><div class="stat-value" id="sv-remaining">3</div></div>
+      </div>
+      <div id="vote-list"></div>
+    </div>
+    <!-- BOARD -->
+    <div class="panel" id="panel-board">
+      <div class="board-header">
+        <div>
+          <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+          <div class="live-sub">TOTAL VOTES</div>
+          <div class="live-total" id="board-total">0</div>
+        </div>
+      </div>
+      <div id="winner-banner" style="display:none" class="winner-banner">
+        <div class="wb-trophy">🏆</div>
+        <div><div class="wb-label">得票最多小组</div><div class="wb-name" id="winner-name">-</div></div>
+      </div>
+      <div id="board-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: ADMIN LOGIN -->
+<div class="screen" id="screen-admin-login">
+  <div class="admin-login-wrap">
+    <div class="admin-login-card">
+      <div class="alc-title">管理员登录</div>
+      <div class="alc-sub">请输入管理员密码</div>
+      <input class="admin-input" type="password" id="admin-pwd-input" placeholder="输入密码" onkeydown="if(event.key==='Enter')adminLogin()">
+      <button class="admin-submit-btn" onclick="adminLogin()">进入管理后台</button>
+      <div class="admin-err" id="admin-err">密码错误，请重试</div>
+      <button style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid #e8e4dc;background:none;font-size:13px;color:#aaa;cursor:pointer;font-family:inherit" onclick="showScreen(lastScreen)">← 返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: ADMIN PANEL -->
+<div class="screen" id="screen-admin">
+  <div class="admin-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 14px">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;color:#1a1a2e">管理后台</div>
+      <button style="font-size:12px;color:#aaa;border:none;background:none;cursor:pointer;font-family:inherit" onclick="adminLogout()">退出登录</button>
+    </div>
+
+    <div class="admin-section">
+      <div class="as-title">活动状态</div>
+      <div class="as-row">
+        <span class="as-label">当前阶段</span>
+        <span class="as-value" id="admin-status-text">等待开始</span>
+      </div>
+      <div class="phase-btns">
+        <button class="phase-btn primary" onclick="setStatus('submitting')">开启录入阶段</button>
+        <button class="phase-btn primary" onclick="setStatus('voting')">开启投票阶段</button>
+        <button class="phase-btn" onclick="setStatus('ended')">结束活动</button>
+        <button class="phase-btn" onclick="setStatus('waiting')">重置为等待</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="as-title">实时数据</div>
+      <div class="as-row">
+        <span class="as-label">已加入人数</span>
+        <span class="as-value" id="admin-participants">0</span>
+      </div>
+      <div class="as-row">
+        <span class="as-label">已投总票数</span>
+        <span class="as-value" id="admin-total-votes">0</span>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="as-title">各组填写进度</div>
+      <div class="progress-bars" id="admin-progress"></div>
+    </div>
+
+    <div class="admin-section">
+      <div class="as-title">每人票数设置</div>
+      <div class="as-row">
+        <span class="as-label">每人可投票数</span>
+        <div class="votes-ctrl">
+          <button class="ctrl-btn" onclick="changeVotes(-1)">−</button>
+          <div class="ctrl-val" id="admin-votes-val">3</div>
+          <button class="ctrl-btn" onclick="changeVotes(1)">+</button>
+        </div>
+      </div>
+      <button class="phase-btn primary" style="width:100%;margin-top:8px" onclick="saveVotesPerPerson()">保存票数设置</button>
+    </div>
+
+    <div class="admin-section">
+      <div class="as-title">数据操作</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="phase-btn danger" onclick="adminResetVotes()">重置所有投票（保留场景）</button>
+        <button class="phase-btn danger" onclick="adminResetAll()">重置全部数据（场景+投票）</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="as-title">导出结果</div>
+      <div class="as-row" style="margin-bottom:0">
+        <span class="as-label">导出前</span>
+        <div class="export-row">
+          <input class="export-num-input" type="number" id="export-num" value="5" min="1" max="20">
+          <span style="font-size:13px;color:#555">名场景</span>
+          <button class="export-btn" onclick="exportResults()">生成 HTML</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GUEST MODAL -->
+<div class="modal-overlay" id="guest-modal">
+  <div class="modal-card">
+    <div class="modal-title">⭐ 嘉宾身份验证</div>
+    <div class="modal-sub">请输入嘉宾密码。验证成功后每位嘉宾享有 3 票，每票计 2 分。</div>
+    <input class="modal-input" type="password" id="guest-pwd-input" placeholder="输入嘉宾密码" onkeydown="if(event.key==='Enter')confirmGuestLogin()">
+    <div class="modal-err" id="guest-err">密码错误，请重试</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeGuestModal()">取消</button>
+      <button class="modal-confirm" onclick="confirmGuestLogin()">确认身份 →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://qawodgamzwgkajnmsgpz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhd29kZ2Ftendna2Fqbm1zZ3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjYzODAsImV4cCI6MjA4OTgwMjM4MH0.YxPN1ycb-CJRn1b3j0-I50A-sYnHSAXbjJ0ggj2U-88';
+const ADMIN_PASSWORD = 'salon2025';
+const GUEST_PASSWORD = 'guest2025';   // 嘉宾密码
+const GUEST_VOTES = 3;                // 嘉宾票数
+const GUEST_SCORE_WEIGHT = 2;         // 每票计分倍数
+const GROUPS = ['小组 01','小组 02','小组 03','小组 04'];
+const GB_CLASSES = ['vc-b1','vc-b2','vc-b3','vc-b4'];
+const BR_CLASSES = ['vc-b1','vc-b2','vc-b3','vc-b4'];
+const DOT_COLORS = ['#4a3fd4','#c0392b','#b7770d','#1a8a6e'];
+const MEDALS = ['🥇','🥈','🥉','🏅','🏅'];
+const MAX_SCENES = 5;
+
+let VOTER_ID = localStorage.getItem('salon_voter_id');
+if (!VOTER_ID) { VOTER_ID = 'v_' + Math.random().toString(36).slice(2) + Date.now(); localStorage.setItem('salon_voter_id', VOTER_ID); }
+
+let myGroup = parseInt(localStorage.getItem('salon_group') ?? '-1');
+let activityStatus = 'waiting';
+let prevStatus = 'waiting'; // BUG-002/003: track previous status to detect real changes
+let votesPerPerson = 3;
+let allScenes = [], voteCounts = {}, myVotes = [], medalAnimated = {};
+let editingSceneId = null; // BUG-004: track which scene is being edited
+let adminVotesVal = 3;
+let isAdmin = false; // 管理员标记：进入后台后不参与投票/录入
+let isGuest = false; // 嘉宾标记
+let myGuestVotes = []; // 嘉宾已投场景 id 列表
+let guestVoteCounts = {}; // 嘉宾票数统计 {scene_id: count}
+let lastScreen = 'screen-waiting';
+let pollingTimer = null;
+
+// ── API ──
+async function api(path, method='GET', body=null) {
+  let prefer = '';
+  if (method === 'POST') prefer = 'return=representation';
+  if (method === 'PATCH') prefer = 'return=minimal';
+  if (method === 'DELETE') prefer = 'return=minimal';
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+  };
+  if (prefer) headers['Prefer'] = prefer;
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
+  if (!res.ok) { const t = await res.text(); throw new Error(t); }
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : [];
+}
+
+// ── TOAST ──
+function showToast(msg, dur=2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── SCREENS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  lastScreen = id;
+}
+
+function toggleAdmin() {
+  if (document.getElementById('screen-admin').classList.contains('active')) { adminLogout(); return; }
+  showScreen('screen-admin-login');
+}
+
+function adminLogin() {
+  const pwd = document.getElementById('admin-pwd-input').value;
+  if (pwd === ADMIN_PASSWORD) {
+    document.getElementById('admin-err').style.display = 'none';
+    document.getElementById('admin-pwd-input').value = '';
+    isAdmin = true; // 标记为管理员，不参与活动
+    showScreen('screen-admin');
+    refreshAdmin();
+  } else {
+    document.getElementById('admin-err').style.display = 'block';
+  }
+}
+
+function adminLogout() {
+  isAdmin = false; // 退出管理员身份
+  routeByStatus();
+}
+
+// ── INIT ──
+async function init() {
+  try {
+    await loadConfig();
+    await loadAllScenes();
+    await loadVoteCounts();
+    await loadGuestVoteCounts();
+    const myVoteData = await api(`votes?voter_id=eq.${VOTER_ID}&select=scene_id`);
+    myVotes = myVoteData.map(r => r.scene_id);
+    prevStatus = activityStatus;
+    document.getElementById('loading').classList.add('hide');
+    updateNavAvatar();
+    routeByStatus(true);
+    startPolling();
+  } catch(e) {
+    document.getElementById('loading').classList.add('hide');
+    showToast('网络连接失败，请刷新页面重试');
+  }
+}
+
+async function loadConfig() {
+  const data = await api('activity_config?id=eq.1&select=*');
+  if (data[0]) { activityStatus = data[0].status; votesPerPerson = data[0].votes_per_person; }
+  updateNavStatus();
+}
+
+async function loadAllScenes() {
+  const data = await api('scenes?select=*&order=id.asc');
+  // BUG-001: filter out empty-name scenes from display (safety net)
+  allScenes = data.map(r => ({ id: r.id, name: r.name, group: r.group_index }));
+}
+
+async function loadVoteCounts() {
+  const data = await api('votes?select=scene_id');
+  voteCounts = {};
+  data.forEach(r => { voteCounts[r.scene_id] = (voteCounts[r.scene_id]||0) + 1; });
+}
+
+async function loadGuestVoteCounts() {
+  // 嘉宾票用 voter_id 以 'guest_' 开头区分，不依赖 is_guest 字段
+  try {
+    const data = await api('votes?voter_id=like.guest_*&select=scene_id');
+    guestVoteCounts = {};
+    data.forEach(r => { guestVoteCounts[r.scene_id] = (guestVoteCounts[r.scene_id]||0) + 1; });
+  } catch(e) { guestVoteCounts = {}; }
+}
+
+function startPolling() {
+  if (pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(async () => {
+    try {
+      const oldStatus = activityStatus;
+      await loadConfig();
+      await loadAllScenes();
+      await loadVoteCounts();
+      await loadGuestVoteCounts();
+      const statusChanged = activityStatus !== oldStatus;
+      const cur = document.querySelector('.screen.active');
+      if (cur) {
+        if (cur.id === 'screen-main') {
+          const activePanel = document.querySelector('.panel.active');
+          if (activePanel) {
+            // BUG-004: don't re-render scene list while user is editing
+            if (activePanel.id === 'panel-submit' && editingSceneId === null) renderSceneList();
+            if (activePanel.id === 'panel-vote') renderVoteList();
+            if (activePanel.id === 'panel-board') renderBoard();
+          }
+        }
+        // BUG-008: refresh group select scene counts while on that screen
+        if (cur.id === 'screen-groupselect') buildGroupSelect();
+        if (cur.id === 'screen-admin') refreshAdmin();
+      }
+      // BUG-002/003: only auto-route on actual status change, not every poll tick
+      if (statusChanged &&
+          !document.getElementById('screen-admin').classList.contains('active') &&
+          !document.getElementById('screen-admin-login').classList.contains('active')) {
+        routeByStatus(true);
+      }
+    } catch(e) {}
+  }, 3000);
+}
+
+// BUG-002/003: forceSwitch=true only when status actually changed
+function routeByStatus(forceSwitch = false) {
+  if (activityStatus === 'waiting') { showScreen('screen-waiting'); return; }
+  // 只有在 submitting/voting/ended 阶段才允许进入选组和主界面
+  if (myGroup < 0 || myGroup > 3) { showScreen('screen-groupselect'); buildGroupSelect(); return; }
+  const curScreen = document.querySelector('.screen.active');
+  // Only switch screen if not already on main, or forced
+  if (forceSwitch || !curScreen || curScreen.id !== 'screen-main') {
+    showScreen('screen-main');
+  }
+  // Only switch tab if status actually changed (forceSwitch) to avoid interrupting user
+  if (forceSwitch) {
+    if (activityStatus === 'submitting') switchTab('submit');
+    else if (activityStatus === 'voting') switchTab('vote');
+    else if (activityStatus === 'ended') switchTab('board');
+  }
+}
+
+function updateNavStatus() {
+  const el = document.getElementById('nav-status');
+  const map = { waiting:['等待开始','ns-waiting'], submitting:['录入中','ns-submitting'], voting:['投票中','ns-voting'], ended:['已结束','ns-ended'] };
+  const [text, cls] = map[activityStatus] || ['未知','ns-waiting'];
+  el.textContent = text;
+  el.className = 'nav-status ' + cls;
+}
+
+// ── GROUP SELECT ──
+function updateNavAvatar() {
+  const badge = document.getElementById('nav-group-badge');
+  if (myGroup >= 0 && myGroup <= 3 && !isAdmin) {
+    badge.textContent = '0' + (myGroup + 1);
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function changeGroup() {
+  if (isAdmin) return; // 管理员不切换小组
+  if (activityStatus === 'waiting') { showToast('活动尚未开始'); return; }
+  // 清除本地小组记录，回到选组界面
+  myGroup = -1;
+  localStorage.removeItem('salon_group');
+  updateNavAvatar();
+  showScreen('screen-groupselect');
+  buildGroupSelect();
+}
+
+function buildGroupSelect() {
+  const list = document.getElementById('group-btn-list');
+  list.innerHTML = '';
+  GROUPS.forEach((g, i) => {
+    const cnt = allScenes.filter(s => s.group === i).length;
+    const btn = document.createElement('button');
+    btn.className = 'group-btn';
+    btn.innerHTML = `<div class="gb-dot gb-dot-${i+1}" style="background:${DOT_COLORS[i]}"></div><span class="gb-name">${g}</span><span class="gb-count">${cnt} 个场景</span><span class="gb-arrow">›</span>`;
+    btn.onclick = () => selectGroup(i);
+    list.appendChild(btn);
+  });
+}
+
+async function selectGroup(gi) {
+  myGroup = gi;
+  localStorage.setItem('salon_group', gi);
+  updateNavAvatar();
+  try {
+    await api('participants', 'POST', { voter_id: VOTER_ID, group_index: gi });
+  } catch(e) { /* already exists is fine */ }
+  showScreen('screen-main');
+  switchTab('submit');
+}
+
+// ── TAB ──
+function switchTab(name) {
+  ['submit','vote','board'].forEach(n => {
+    document.getElementById('tab-'+n).classList.toggle('active', n===name);
+    document.getElementById('panel-'+n).classList.toggle('active', n===name);
+  });
+  if (name==='submit') renderSceneList();
+  if (name==='vote') renderVoteList();
+  if (name==='board') renderBoard();
+}
+
+// ── SCENE LIST ──
+function myScenes() { return allScenes.filter(s => s.group === myGroup); }
+
+function renderSceneList() {
+  // 任何编辑状态下（含新草稿）都不被轮询重渲染；只有主动调用（addScene/saveScene/cancelDraft等）才执行
+  if (editingSceneId !== null && editingSceneId !== 'new') return;
+  const list = document.getElementById('scene-list');
+  const isSubmitting = activityStatus === 'submitting';
+  // Only count/show real saved scenes (non-empty names)
+  const visibleScenes = myScenes().filter(s => s.name.trim() !== '');
+  list.innerHTML = '';
+  if (!visibleScenes.length && !isSubmitting && !editingSceneId) {
+    list.innerHTML = '<p class="empty-hint">本组暂无场景</p>';
+  }
+  visibleScenes.forEach((s, idx) => {
+    const item = document.createElement('div');
+    item.className = 'scene-item';
+    item.id = 'scene-item-' + s.id;
+    item.innerHTML = `
+      <div class="scene-num">${idx+1}</div>
+      <div class="scene-content">
+        <div class="scene-text" id="scene-text-${s.id}">${escHtml(s.name)}</div>
+      </div>
+      ${isSubmitting ? `<div class="scene-actions">
+        <button class="sa-btn" onclick="editScene(${s.id})" title="编辑">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="sa-btn sa-del" onclick="deleteScene(${s.id})" title="删除">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>` : ''}`;
+    list.appendChild(item);
+  });
+  // If there is an unsaved draft row (new scene), append it
+  if (editingSceneId === 'new' && isSubmitting) {
+    const draftIdx = visibleScenes.length + 1;
+    const draftItem = document.createElement('div');
+    draftItem.className = 'scene-item editing';
+    draftItem.id = 'scene-item-new';
+    draftItem.innerHTML = `
+      <div class="scene-num">${draftIdx}</div>
+      <div class="scene-content">
+        <textarea class="scene-textarea" id="edit-ta-new" placeholder="格式：【场景名称】+描述..."></textarea>
+        <div class="scene-hint">格式：【场景名称】+描述...</div>
+      </div>
+      <div class="scene-actions">
+        <button class="sa-btn" onclick="saveDraftScene()" title="保存" style="background:#eeeefe;border-color:#4a3fd4">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4a3fd4" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </button>
+        <button class="sa-btn sa-del" onclick="cancelDraft()" title="取消">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>`;
+    list.appendChild(draftItem);
+    const ta = document.getElementById('edit-ta-new');
+    autoResize(ta);
+    ta.addEventListener('input', () => autoResize(ta));
+    ta.focus();
+  }
+  // Limit is based on real saved (non-empty) scenes only
+  const atLimit = visibleScenes.length >= MAX_SCENES;
+  const addBtn = document.getElementById('add-scene-btn');
+  const limitTip = document.getElementById('limit-tip');
+  addBtn.style.display = isSubmitting ? 'block' : 'none';
+  addBtn.disabled = atLimit || !!editingSceneId;
+  limitTip.style.display = (isSubmitting && atLimit) ? 'block' : 'none';
+}
+
+function editScene(id) {
+  const scene = allScenes.find(s => s.id === id);
+  if (!scene) return;
+  editingSceneId = id; // BUG-004: mark editing state
+  const item = document.getElementById('scene-item-' + id);
+  item.classList.add('editing');
+  const content = item.querySelector('.scene-content');
+  content.innerHTML = `
+    <textarea class="scene-textarea" id="edit-ta-${id}" placeholder="格式：【场景名称】+描述...">${escHtml(scene.name)}</textarea>
+    <div class="scene-hint">格式：【场景名称】+描述...</div>`;
+  const ta = document.getElementById('edit-ta-' + id);
+  autoResize(ta);
+  ta.addEventListener('input', () => autoResize(ta));
+  ta.focus();
+  const actions = item.querySelector('.scene-actions');
+  actions.innerHTML = `
+    <button class="sa-btn" onclick="saveScene(${id})" title="保存" style="background:#eeeefe;border-color:#4a3fd4">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4a3fd4" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </button>
+    <button class="sa-btn sa-del" onclick="cancelEdit(${id})" title="取消">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>`;
+}
+
+// BUG-006: proper cancel that only affects the one item, not full re-render
+function cancelEdit(id) {
+  editingSceneId = null;
+  const scene = allScenes.find(s => s.id === id);
+  if (!scene || !scene.name.trim()) {
+    // BUG-001: if the scene was empty (newly added but not filled), delete it
+    deleteScene(id);
+    return;
+  }
+  renderSceneList();
+}
+
+async function saveScene(id) {
+  const ta = document.getElementById('edit-ta-' + id);
+  const val = ta.value.trim();
+  if (!val) { showToast('场景内容不能为空'); return; }
+  try {
+    await api(`scenes?id=eq.${id}`, 'PATCH', { name: val });
+    const s = allScenes.find(x => x.id === id);
+    if (s) s.name = val;
+    editingSceneId = null; // BUG-004: clear editing state
+    renderSceneList();
+    showToast('保存成功');
+  } catch(e) {
+    const raw = e.message || '';
+    let detail = raw;
+    try { detail = JSON.parse(raw).message || JSON.parse(raw).hint || raw; } catch(_) {}
+    showToast('保存失败: ' + detail.slice(0, 80), 4000);
+    console.error('[saveScene]', raw);
+  }
+}
+
+async function addScene() {
+  if (isAdmin) { showToast('管理员不参与场景录入，请退出后台后操作'); return; }
+  if (myGroup < 0 || myGroup > 3) { showToast('请先选择所在小组'); return; }
+  // 只计算已保存的非空场景
+  const savedScenes = myScenes().filter(s => s.name.trim() !== '');
+  if (savedScenes.length >= MAX_SCENES) return;
+  // 纯本地操作：设置草稿状态，不写数据库
+  editingSceneId = 'new';
+  renderSceneList();
+}
+
+// 保存草稿新场景（此时才真正写数据库）
+async function saveDraftScene() {
+  const ta = document.getElementById('edit-ta-new');
+  if (!ta) return;
+  const val = ta.value.trim();
+  if (!val) { showToast('场景内容不能为空'); ta.focus(); return; }
+  try {
+    const inserted = await api('scenes?select=*', 'POST', { name: val, group_index: myGroup });
+    if (inserted[0]) {
+      allScenes.push({ id: inserted[0].id, name: val, group: myGroup });
+    }
+    editingSceneId = null;
+    renderSceneList();
+    showToast('场景已保存 ✓');
+  } catch(e) {
+    const raw = e.message || '';
+    let detail = raw;
+    try { detail = JSON.parse(raw).message || JSON.parse(raw).hint || raw; } catch(_) {}
+    showToast('添加失败: ' + detail.slice(0, 80), 4000);
+    console.error('[saveDraftScene]', raw);
+  }
+}
+
+// 取消新增草稿
+function cancelDraft() {
+  editingSceneId = null;
+  renderSceneList();
+}
+
+async function deleteScene(id) {
+  try {
+    await api(`scenes?id=eq.${id}`, 'DELETE');
+    allScenes = allScenes.filter(s => s.id !== id);
+    editingSceneId = null;
+    renderSceneList();
+  } catch(e) { showToast('删除失败，请重试'); }
+}
+
+function autoResize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── VOTE ──
+function renderVoteList() {
+  const list = document.getElementById('vote-list');
+  const remaining = Math.max(0, votesPerPerson - myVotes.length);
+  document.getElementById('sv-remaining').textContent = remaining;
+  document.getElementById('sv-per').textContent = votesPerPerson;
+  // 总分 = 普通票 × 1 + 嘉宾票 × GUEST_SCORE_WEIGHT
+  const normalTotal = Object.values(voteCounts).reduce((a,b)=>a+b,0);
+  const guestTotal = Object.values(guestVoteCounts).reduce((a,b)=>a+b,0);
+  const scoreTotal = normalTotal + guestTotal * GUEST_SCORE_WEIGHT;
+  document.getElementById('sv-total').textContent = scoreTotal;
+
+  // 更新嘉宾按钮状态
+  const guestBtn = document.getElementById('guest-vote-btn');
+  if (guestBtn) {
+    if (isGuest) {
+      guestBtn.classList.add('is-guest');
+      guestBtn.innerHTML = `✦ 嘉宾身份已激活 · 剩余 ${GUEST_VOTES - myGuestVotes.length} 票`;
+      guestBtn.onclick = null;
+    } else {
+      guestBtn.classList.remove('is-guest');
+      guestBtn.innerHTML = `✦ 嘉宾专属投票通道`;
+      guestBtn.onclick = openGuestModal;
+    }
+    document.getElementById('guest-vote-area').style.display = activityStatus === 'voting' ? 'block' : 'none';
+  }
+
+  if (!allScenes.length) { list.innerHTML = '<p class="empty-hint">等待主持人开启录入阶段</p>'; return; }
+
+  list.innerHTML = '';
+  GROUPS.forEach((gname, gi) => {
+    const gScenes = allScenes.filter(s => s.group === gi && s.name.trim() !== '');
+    if (!gScenes.length) return;
+    const sec = document.createElement('div');
+    sec.className = 'group-section';
+    sec.innerHTML = `<div class="gs-label"><span>${gname}</span><div class="gs-line"></div></div>`;
+    gScenes.forEach(s => {
+      const voted = myVotes.includes(s.id);
+      const guestVoted = myGuestVotes.includes(s.id);
+      const canVote = remaining > 0 && !voted && activityStatus === 'voting';
+      const canGuestVote = isGuest && !guestVoted && myGuestVotes.length < GUEST_VOTES && activityStatus === 'voting';
+      const normalCnt = voteCounts[s.id] || 0;
+      const guestCnt = guestVoteCounts[s.id] || 0;
+      const score = normalCnt + guestCnt * GUEST_SCORE_WEIGHT;
+      // 进度条：普通票蓝色 + 嘉宾票金色叠加
+      const maxScore = Math.max(...allScenes.map(x => (voteCounts[x.id]||0) + (guestVoteCounts[x.id]||0)*GUEST_SCORE_WEIGHT), 1);
+      const normalPct = scoreTotal > 0 ? Math.round(normalCnt / maxScore * 100) : 0;
+      const guestPct = scoreTotal > 0 ? Math.round(guestCnt * GUEST_SCORE_WEIGHT / maxScore * 100) : 0;
+      const card = document.createElement('div');
+      card.className = 'vote-card' + (voted?' voted':'');
+      card.innerHTML = `
+        <div class="vc-top">
+          <span class="vc-badge ${GB_CLASSES[gi]}">${gname}</span>
+          ${voted ? `<span class="vc-voted-tag">✓ 已投票</span>` : `<span class="vc-count-tag">${score} 分</span>`}
+        </div>
+        <div class="vc-name">${escHtml(s.name)}</div>
+        ${(voted || guestCnt > 0) ? `<div class="vc-score-row"><span>综合得分 ${score} 分</span>${guestCnt > 0 ? `<span class="vc-guest-score">⭐ 嘉宾 +${guestCnt * GUEST_SCORE_WEIGHT}</span>` : ''}</div>` : ''}
+        <div class="vc-bar-dual">
+          <div class="vc-bar-normal" style="width:${normalPct}%"></div>
+          <div class="vc-bar-guest" style="left:${normalPct}%;width:${guestPct}%"></div>
+        </div>
+        ${activityStatus==='voting' ? `
+          <div style="display:flex;gap:7px">
+            <button class="vc-btn" style="flex:${isGuest?'1':'1'}" ${canVote?'':'disabled'} onclick="castVote(${s.id})">${voted?'✓ 普通票已投':canVote?'投出一票 ✦':'已投或票已用完'}</button>
+            ${isGuest ? `<button class="vc-btn" style="flex:1;background:${guestVoted?'#e8b84b':canGuestVote?'linear-gradient(135deg,#c9890a,#e8b84b)':'#e8e4dc'};color:${guestVoted||!canGuestVote?'#fff':'#fff'}" ${canGuestVote?'':'disabled'} onclick="castGuestVote(${s.id})">${guestVoted?'⭐ 嘉宾票已投':'⭐ 嘉宾票 ×2'}</button>` : ''}
+          </div>` : ''}`;
+      sec.appendChild(card);
+    });
+    list.appendChild(sec);
+  });
+
+  api('participants?select=voter_id').then(d => { document.getElementById('sv-participants').textContent = d.length; }).catch(()=>{});
+}
+
+async function castVote(id) {
+  if (isAdmin) { showToast('管理员不参与投票'); return; }
+  if (myVotes.includes(id) || myVotes.length >= votesPerPerson) return;
+  myVotes.push(id);
+  voteCounts[id] = (voteCounts[id]||0) + 1;
+  renderVoteList(); renderBoard();
+  try {
+    await api('votes', 'POST', { scene_id: id, voter_id: VOTER_ID });
+    showToast('投票成功 ✦');
+  } catch(e) {
+    myVotes = myVotes.filter(v => v !== id);
+    voteCounts[id]--;
+    renderVoteList(); renderBoard();
+    showToast('投票失败，请重试');
+  }
+}
+
+// ── GUEST VOTE ──
+function openGuestModal() {
+  if (activityStatus !== 'voting') { showToast('请等待主持人开启投票阶段'); return; }
+  if (isGuest) { showToast('你已完成嘉宾身份验证'); return; }
+  document.getElementById('guest-err').style.display = 'none';
+  document.getElementById('guest-pwd-input').value = '';
+  document.getElementById('guest-modal').classList.add('open');
+  setTimeout(() => document.getElementById('guest-pwd-input').focus(), 200);
+}
+
+function closeGuestModal() {
+  document.getElementById('guest-modal').classList.remove('open');
+}
+
+function confirmGuestLogin() {
+  const pwd = document.getElementById('guest-pwd-input').value;
+  if (pwd === GUEST_PASSWORD) {
+    isGuest = true;
+    closeGuestModal();
+    // 更新按钮状态
+    const btn = document.getElementById('guest-vote-btn');
+    btn.classList.add('is-guest');
+    btn.innerHTML = `✦ 嘉宾身份已激活 · 剩余 ${GUEST_VOTES - myGuestVotes.length} 票`;
+    btn.onclick = null;
+    renderVoteList();
+    showToast('嘉宾身份验证成功！你有 ' + GUEST_VOTES + ' 票，每票计 ' + GUEST_SCORE_WEIGHT + ' 分 ✦');
+  } else {
+    document.getElementById('guest-err').style.display = 'block';
+  }
+}
+
+async function castGuestVote(id) {
+  if (!isGuest) return;
+  if (myGuestVotes.includes(id)) { showToast('已对该场景投过嘉宾票'); return; }
+  if (myGuestVotes.length >= GUEST_VOTES) { showToast('嘉宾票已用完'); return; }
+  myGuestVotes.push(id);
+  guestVoteCounts[id] = (guestVoteCounts[id]||0) + 1;
+  // 更新按钮剩余票数
+  const btn = document.getElementById('guest-vote-btn');
+  if (btn) btn.innerHTML = `✦ 嘉宾身份已激活 · 剩余 ${GUEST_VOTES - myGuestVotes.length} 票`;
+  renderVoteList(); renderBoard();
+  try {
+    await api('votes', 'POST', { scene_id: id, voter_id: 'guest_' + VOTER_ID });
+    showToast('嘉宾票投出成功 ✦ (+' + GUEST_SCORE_WEIGHT + '分)');
+  } catch(e) {
+    myGuestVotes = myGuestVotes.filter(v => v !== id);
+    guestVoteCounts[id]--;
+    renderVoteList(); renderBoard();
+    showToast('嘉宾投票失败，请重试');
+  }
+}
+function renderBoard() {
+  const list = document.getElementById('board-list');
+  // 综合得分 = 普通票 × 1 + 嘉宾票 × GUEST_SCORE_WEIGHT
+  function getScore(s) { return (voteCounts[s.id]||0) + (guestVoteCounts[s.id]||0) * GUEST_SCORE_WEIGHT; }
+  const scoreTotal = allScenes.reduce((a, s) => a + getScore(s), 0);
+  document.getElementById('board-total').textContent = scoreTotal.toLocaleString();
+
+  const validScenes = allScenes.filter(s => s.name.trim() !== '');
+  if (!validScenes.length) { list.innerHTML = '<p class="empty-hint">暂无数据</p>'; document.getElementById('winner-banner').style.display='none'; return; }
+
+  const groupScores = [0,0,0,0];
+  validScenes.forEach(s => { groupScores[s.group] += getScore(s); });
+  const maxGroupScore = Math.max(...groupScores);
+  if (maxGroupScore > 0) {
+    const winnerIdx = groupScores.indexOf(maxGroupScore);
+    document.getElementById('winner-name').textContent = GROUPS[winnerIdx] + '（' + maxGroupScore + ' 分）';
+    document.getElementById('winner-banner').style.display = 'flex';
+  } else {
+    document.getElementById('winner-banner').style.display = 'none';
+  }
+
+  const sorted = [...validScenes].sort((a,b) => getScore(b) - getScore(a));
+  const maxScore = Math.max(...sorted.map(s => getScore(s)), 1);
+  list.innerHTML = '';
+  sorted.forEach((s, idx) => {
+    const normalCnt = voteCounts[s.id]||0;
+    const guestCnt = guestVoteCounts[s.id]||0;
+    const score = normalCnt + guestCnt * GUEST_SCORE_WEIGHT;
+    const isTop5 = idx < 5 && score > 0;
+    const normalPct = Math.round(normalCnt / maxScore * 100);
+    const guestPct = Math.round(guestCnt * GUEST_SCORE_WEIGHT / maxScore * 100);
+    const row = document.createElement('div');
+    row.className = 'board-row' + (isTop5?' top5':'');
+    const key = 'top5_' + s.id;
+    const needAnim = isTop5 && !medalAnimated[key];
+    if (needAnim) medalAnimated[key] = true;
+    if (!isTop5 && medalAnimated[key]) delete medalAnimated[key];
+    const leftHtml = isTop5
+      ? `<span class="br-medal ${needAnim?'medal-pop':''} medal-shine" style="${needAnim?'animation-delay:'+(idx*0.1)+'s':''}">${MEDALS[idx]}</span>`
+      : `<span class="br-rank">${idx+1}</span>`;
+    row.innerHTML = `
+      ${leftHtml}
+      <div class="br-main">
+        <div class="br-name">${escHtml(s.name)}</div>
+        <div class="vc-bar-dual" style="margin-bottom:4px">
+          <div class="vc-bar-normal" style="width:${normalPct}%"></div>
+          <div class="vc-bar-guest" style="left:${normalPct}%;width:${guestPct}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px">
+          <span style="color:#4a3fd4;font-weight:400">普通票 ${normalCnt} 分</span>
+          ${guestCnt > 0 ? `<span style="color:#c9890a;font-weight:400">⭐ 嘉宾票 +${guestCnt * GUEST_SCORE_WEIGHT} 分</span>` : `<span style="color:#ccc">暂无嘉宾票</span>`}
+        </div>
+      </div>
+      <div class="br-right">
+        <div class="br-badge ${BR_CLASSES[s.group]}">${GROUPS[s.group]}</div>
+        <div class="br-votes">${score}</div>
+        <div class="br-label">SCORE</div>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+// ── ADMIN ──
+async function setStatus(status) {
+  try {
+    await api('activity_config?id=eq.1', 'PATCH', { status, updated_at: new Date().toISOString() });
+    activityStatus = status;
+    updateNavStatus();
+    showToast('状态已更新');
+    document.getElementById('admin-status-text').textContent = { waiting:'等待开始', submitting:'录入中', voting:'投票中', ended:'已结束' }[status];
+  } catch(e) { showToast('操作失败: ' + e.message.slice(0,40)); }
+}
+
+function changeVotes(delta) {
+  adminVotesVal = Math.max(1, Math.min(10, adminVotesVal + delta));
+  document.getElementById('admin-votes-val').textContent = adminVotesVal;
+}
+
+async function saveVotesPerPerson() {
+  try {
+    await api('activity_config?id=eq.1', 'PATCH', { votes_per_person: adminVotesVal });
+    votesPerPerson = adminVotesVal;
+    showToast('票数设置已保存');
+  } catch(e) { showToast('保存失败'); }
+}
+
+async function adminResetVotes() {
+  try {
+    await api('votes?created_at=gte.2000-01-01', 'DELETE');
+    voteCounts = {}; guestVoteCounts = {}; myVotes = []; myGuestVotes = []; medalAnimated = {};
+    renderBoard(); renderVoteList();
+    showToast('投票数据已重置');
+  } catch(e) { showToast('重置失败: ' + e.message); }
+}
+
+async function adminResetAll() {
+  try {
+    await api('votes?created_at=gte.2000-01-01', 'DELETE');
+    await api('scenes?created_at=gte.2000-01-01', 'DELETE');
+    await api('participants?joined_at=gte.2000-01-01', 'DELETE');
+    allScenes = []; voteCounts = {}; guestVoteCounts = {}; myVotes = []; myGuestVotes = []; medalAnimated = {}; editingSceneId = null;
+    renderBoard(); renderVoteList(); renderSceneList();
+    showToast('所有数据已重置');
+  } catch(e) { showToast('重置失败: ' + e.message); }
+}
+
+async function refreshAdmin() {
+  try {
+    await loadConfig();
+    await loadAllScenes();
+    await loadVoteCounts();
+    const parts = await api('participants?select=voter_id');
+    document.getElementById('admin-participants').textContent = parts.length;
+    const totalVotes = Object.values(voteCounts).reduce((a,b)=>a+b,0);
+    document.getElementById('admin-total-votes').textContent = totalVotes;
+    document.getElementById('admin-status-text').textContent = { waiting:'等待开始', submitting:'录入中', voting:'投票中', ended:'已结束' }[activityStatus];
+    document.getElementById('admin-votes-val').textContent = votesPerPerson;
+    adminVotesVal = votesPerPerson;
+    const pb = document.getElementById('admin-progress');
+    pb.innerHTML = '';
+    GROUPS.forEach((g, i) => {
+      // BUG-001: only count non-empty scenes in progress
+      const cnt = allScenes.filter(s => s.group === i && s.name.trim() !== '').length;
+      const pct = Math.round(cnt / MAX_SCENES * 100);
+      pb.innerHTML += `<div class="pg-row"><div class="pg-label">${g}</div><div class="pg-track"><div class="pg-fill" style="width:${pct}%"></div></div><div class="pg-count">${cnt}/${MAX_SCENES}</div></div>`;
+    });
+  } catch(e) { showToast('后台数据加载失败，请稍后重试'); } // BUG-009: no longer silent
+}
+
+// ── EXPORT ──
+function exportResults() {
+  const n = parseInt(document.getElementById('export-num').value) || 5;
+  const validScenes = allScenes.filter(s => s.name.trim() !== '');
+  // 按综合得分排序
+  const sorted = [...validScenes].sort((a,b) => {
+    const scoreA = (voteCounts[a.id]||0) + (guestVoteCounts[a.id]||0) * GUEST_SCORE_WEIGHT;
+    const scoreB = (voteCounts[b.id]||0) + (guestVoteCounts[b.id]||0) * GUEST_SCORE_WEIGHT;
+    return scoreB - scoreA;
+  }).slice(0, n);
+  const maxScore = Math.max(...sorted.map(s => (voteCounts[s.id]||0) + (guestVoteCounts[s.id]||0) * GUEST_SCORE_WEIGHT), 1);
+  const totalScore = validScenes.reduce((a,s) => a + (voteCounts[s.id]||0) + (guestVoteCounts[s.id]||0) * GUEST_SCORE_WEIGHT, 0);
+  const today = new Date().toLocaleDateString('zh-CN');
+
+  const rows = sorted.map((s, idx) => {
+    const normalCnt = voteCounts[s.id]||0;
+    const guestCnt = guestVoteCounts[s.id]||0;
+    const score = normalCnt + guestCnt * GUEST_SCORE_WEIGHT;
+    const normalPct = Math.round(normalCnt / maxScore * 100);
+    const guestPct = Math.round(guestCnt * GUEST_SCORE_WEIGHT / maxScore * 100);
+    const medal = idx < 3 ? ['🥇','🥈','🥉'][idx] : (idx < 5 ? '🏅' : '');
+    return `
+    <div style="background:${idx<5?'#fef3e2':'#fff'};border:1px solid ${idx<5?'#f0d898':'#ede9e0'};border-radius:14px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:26px;width:32px;text-align:center;flex-shrink:0">${medal || (idx+1)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px;font-weight:400;color:#1a1a2e;margin-bottom:6px;line-height:1.4;word-break:break-all">${escHtml(s.name)}</div>
+        <div style="position:relative;height:5px;border-radius:3px;background:#e8e4dc;overflow:hidden;margin-bottom:5px">
+          <div style="position:absolute;left:0;top:0;height:5px;border-radius:3px;background:#4a3fd4;width:${normalPct}%"></div>
+          <div style="position:absolute;left:${normalPct}%;top:0;height:5px;background:linear-gradient(90deg,#c9890a,#e8b84b);width:${guestPct}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px">
+          <span style="color:#4a3fd4;font-weight:400">普通票 ${normalCnt} 分</span>
+          ${guestCnt > 0 ? `<span style="color:#c9890a;font-weight:400">⭐ 嘉宾票 +${guestCnt * GUEST_SCORE_WEIGHT} 分</span>` : ''}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;margin-bottom:4px;display:inline-block;background:${['#eeeefe','#fde8e8','#fef3e2','#e2f5f0'][s.group]};color:${['#4a3fd4','#c0392b','#b7770d','#1a8a6e'][s.group]}">${GROUPS[s.group]}</div>
+        <div style="font-size:18px;font-weight:400;color:#1a1a2e;line-height:1">${score}</div>
+        <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:.04em">SCORE</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>沙龙投票结果</title></head>
+<body style="margin:0;background:#f5f3ee;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;padding:32px 20px 60px;max-width:600px;margin:0 auto">
+  <div style="text-align:center;margin-bottom:32px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#4a3fd4;background:#eeeefe;padding:4px 12px;border-radius:4px;display:inline-block;margin-bottom:12px">FINAL RESULTS</div>
+    <div style="font-size:26px;font-weight:700;color:#1a1a2e;margin-bottom:6px">第一期知识沙龙</div>
+    <div style="font-size:13px;color:#aaa">《业务提效，AI从哪里切入》· ${today} · 综合得分 ${totalScore} 分</div>
+    <div style="font-size:13px;color:#4a3fd4;margin-top:6px;font-weight:600">Top ${n} AI 场景</div>
+  </div>
+  ${rows}
+  <div style="text-align:center;margin-top:32px;font-size:11px;color:#ccc">由沙龙 AI 场景投票系统生成</div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '沙龙投票结果_Top' + n + '.html';
+  a.click();
+  showToast('导出成功！');
+}
+
+init();
+</script>
+</body>
+</html>
