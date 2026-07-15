@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沙龙互动平台</title>
+<link rel="preconnect" href="https://fonts.loli.net">
+<link href="https://fonts.loli.net/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:#f5f3ee;color:#1a1a2e;min-height:100vh;font-size:14px}
+button{font-family:inherit}
+
+/* ── LOADING ── */
+.loading-overlay{position:fixed;inset:0;background:#f5f3ee;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;gap:20px;transition:opacity .4s}
+.loading-overlay.hide{opacity:0;pointer-events:none}
+.loading-logo{font-family:'Playfair Display',serif;font-size:18px;color:#4a3fd4;font-weight:700;letter-spacing:.02em}
+.loading-bar-track{width:200px;height:6px;border-radius:3px;background:#e8e4dc;overflow:hidden}
+.loading-bar-fill{height:6px;border-radius:3px;background:linear-gradient(90deg,#4a3fd4,#8b7ff5,#4a3fd4);background-size:200% 100%;animation:lshimmer 1.2s ease-in-out infinite,lgrow 2.2s ease-out forwards}
+@keyframes lshimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes lgrow{0%{width:0%}50%{width:66%}90%{width:88%}100%{width:93%}}
+
+/* ── NAV ── */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#f5f3ee;border-bottom:1px solid #e8e4dc;position:sticky;top:0;z-index:100;gap:8px}
+.nav-side{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.nav-side.right{justify-content:flex-end}
+.nav-center{flex:2.2;text-align:center;min-width:0}
+.nav-logo{font-family:'Playfair Display',serif;font-size:14px;color:#4a3fd4;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-status{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;display:inline-block;margin-top:3px}
+.ns-waiting{background:#f1efe8;color:#aaa}.ns-submitting{background:#eeeefe;color:#4a3fd4}
+.ns-voting{background:#e2f5f0;color:#1a8a6e}.ns-collecting{background:#e2f5f0;color:#1a8a6e}
+.ns-ended{background:#fde8e8;color:#c0392b}.ns-archived{background:#f1efe8;color:#888}
+.nav-btn{background:none;border:none;cursor:pointer;padding:6px;display:flex;align-items:center;color:#4a3fd4}
+.nav-icon{width:34px;height:34px;border-radius:50%;background:#e8e4dc;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+#nav-group-badge{display:none;position:absolute;bottom:-2px;right:-2px;font-size:8px;font-weight:700;background:#4a3fd4;color:#fff;border-radius:4px;padding:1px 3px;line-height:1.3}
+
+/* ── SCREENS / 布局容器 ── */
+.screen{display:none;min-height:calc(100vh - 56px)}.screen.active{display:block}
+.page{max-width:560px;margin:0 auto;padding:0 20px 60px}
+.page-wide{max-width:1080px;margin:0 auto;padding:0 20px 60px}
+.empty-hint{font-size:13px;color:#ccc;text-align:center;padding:40px 0}
+.waiting-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:32px 24px;text-align:center}
+.waiting-icon{font-size:48px;margin-bottom:20px}
+.waiting-title{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:10px}
+.waiting-sub{font-size:13px;color:#aaa;line-height:1.7}
+
+/* ── LOBBY 活动大厅 ── */
+.lobby-hero{text-align:center;padding:36px 0 26px}
+.lb-eyebrow{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.14em;color:#4a3fd4;background:#eeeefe;padding:4px 12px;border-radius:4px;margin-bottom:12px}
+.lb-title{font-family:'Playfair Display',serif;font-size:28px;line-height:1.2;margin-bottom:8px}
+.lb-sub{font-size:13px;color:#999}
+.lb-cards{display:flex;flex-direction:column;gap:14px}
+@media(min-width:760px){.lb-cards{flex-direction:row}.lb-card{flex:1}}
+.lb-card{background:#fff;border:1.5px solid #ede9e0;border-radius:18px;padding:22px 20px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .2s;position:relative;overflow:hidden}
+.lb-card:hover{border-color:#4a3fd4;transform:translateY(-2px);box-shadow:0 8px 24px rgba(74,63,212,.08)}
+.lb-card.disabled{cursor:default;opacity:.72}
+.lb-card.disabled:hover{border-color:#ede9e0;transform:none;box-shadow:none}
+.lb-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.lb-type-badge{font-size:10px;font-weight:700;letter-spacing:.08em;padding:4px 10px;border-radius:20px}
+.t-ideas{background:#eeeefe;color:#4a3fd4}.t-survey{background:#e2f5f0;color:#1a8a6e}
+.lb-card-title{font-size:18px;font-weight:700;line-height:1.35;margin-bottom:6px;word-break:break-all}
+.lb-card-sub{font-size:12px;color:#999;line-height:1.6;margin-bottom:16px;min-height:20px;word-break:break-all}
+.lb-meta{display:flex;align-items:center;justify-content:space-between}
+.lb-count{font-size:11px;color:#bbb}
+.lb-enter{font-size:12px;font-weight:700;color:#4a3fd4;display:inline-flex;align-items:center;gap:4px}
+.lb-arch-title{font-size:11px;font-weight:700;letter-spacing:.05em;color:#aaa;margin:30px 0 10px;display:flex;align-items:center;gap:10px}
+.lb-arch-title::after{content:'';flex:1;height:1px;background:#ede9e0}
+.arch-item{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ede9e0;border-radius:12px;padding:13px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.arch-item:hover{border-color:#4a3fd4}
+.arch-name{font-size:14px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arch-date{font-size:11px;color:#bbb;flex-shrink:0}
+.arch-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0}
+
+/* ── TABS ── */
+.tab-bar{display:flex;border-bottom:1px solid #e8e4dc;background:#f5f3ee;position:sticky;top:56px;z-index:90}
+.tab{flex:1;padding:12px 4px;font-size:12px;font-weight:600;color:#bbb;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab.active{color:#4a3fd4;border-bottom-color:#4a3fd4}
+.panel{display:none}.panel.active{display:block}
+.panel-header{padding:20px 0 16px}
+.ph-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;color:#4a3fd4;background:#eeeefe;padding:3px 9px;border-radius:4px;margin-bottom:8px}
+.ph-title{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:6px;line-height:1.25;word-break:break-all}
+.ph-desc{font-size:12px;color:#999;line-height:1.6}
+
+/* ── 选组 ── */
+.group-select-wrap{padding:28px 0}
+.gs-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;color:#4a3fd4;background:#eeeefe;padding:4px 10px;border-radius:4px;margin-bottom:12px;word-break:break-all}
+.gs-title{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:8px}
+.gs-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:28px}
+.group-btn-list{display:flex;flex-direction:column;gap:10px}
+.group-btn{width:100%;padding:16px 20px;border-radius:14px;border:1.5px solid #ede9e0;background:#fff;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .2s}
+.group-btn:hover{border-color:#4a3fd4;background:#fdfcff}
+.group-btn:active{transform:scale(.98)}
+.gb-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.gb-name{font-size:15px;font-weight:700}
+.gb-count{font-size:12px;color:#aaa;margin-left:auto}
+.gb-arrow{color:#ccc;font-size:16px}
+
+/* ── 场景录入 ── */
+.scene-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.scene-item{background:#fff;border-radius:12px;padding:14px;border:1px solid #ede9e0}
+.scene-item.editing{border-color:#4a3fd4}
+.scene-item-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+.scene-actions{display:flex;gap:6px;flex-shrink:0}
+.sa-btn{width:28px;height:28px;border-radius:7px;border:1px solid #e8e4dc;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sa-btn:hover{border-color:#4a3fd4}
+.sa-del:hover{border-color:#e57373;background:#fff5f5}
+.sf-group{margin-bottom:8px}.sf-group:last-child{margin-bottom:0}
+.sf-label{font-size:12px;font-weight:700;color:#4a3fd4;letter-spacing:.03em;display:block;margin-bottom:6px}
+.sf-box{background:#f8f7f4;border:1px solid #e8e4dc;border-radius:8px;padding:8px 10px;transition:border-color .15s,background .15s}
+.sf-box:focus-within{border-color:#4a3fd4;background:#fff}
+.sf-ta{width:100%;font-size:16px;color:#1a1a2e;border:none;background:none;outline:none;resize:none;font-family:inherit;line-height:1.6;min-height:28px;overflow:hidden}
+.sf-ta::placeholder{color:#ccc}
+.add-scene-btn{width:100%;padding:12px;border-radius:12px;border:1.5px dashed #d0ccc4;background:none;font-size:13px;color:#aaa;cursor:pointer;transition:all .15s;margin-bottom:16px}
+.add-scene-btn:hover{border-color:#4a3fd4;color:#4a3fd4;background:#f5f4fe}
+.add-scene-btn:disabled{opacity:.4;cursor:not-allowed}
+.limit-tip{font-size:12px;color:#b7770d;background:#fef3e2;padding:8px 12px;border-radius:8px;margin-bottom:16px;text-align:center}
+
+/* ── 场景内容卡片 ── */
+.sc-card{display:flex;flex-direction:column}
+.sc-field{padding-top:6px;margin-top:6px;border-top:1px solid #f0ece6}
+.sc-field-label{font-size:11px;font-weight:700;letter-spacing:.04em;color:#4a3fd4;margin-bottom:2px}
+.sc-field-val{font-size:13px;color:#444;line-height:1.5;word-break:break-all;white-space:pre-wrap}
+.sc-value{padding-top:6px;margin-top:6px;border-top:1px solid #f0ece6}
+.sc-value-pill{display:inline-flex;align-items:center;gap:5px;background:#fef3e2;border:1px solid #f0d898;border-radius:20px;padding:4px 10px}
+.sc-value-pill-text{font-size:12px;font-weight:700;color:#b7770d}
+.sc-toggle{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#bbb;background:none;border:none;cursor:pointer;transition:color .15s;user-select:none;flex-shrink:0;white-space:nowrap;padding-top:8px}
+.sc-toggle:hover{color:#4a3fd4}
+.sc-toggle svg{transition:transform .2s}
+.sc-toggle.open svg{transform:rotate(180deg)}
+
+/* ── 投票 ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:16px 0}
+.stat-card{background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #ede9e0}
+.stat-card.hl{background:#fef3e2;border-color:#f0d898}
+.stat-label{font-size:11px;color:#bbb;margin-bottom:6px}
+.stat-value{font-size:26px;color:#1a1a2e;line-height:1}
+.stat-card.hl .stat-value{color:#c08a10}
+.group-section{margin-bottom:16px}
+.gs-label{font-size:11px;font-weight:700;letter-spacing:.04em;color:#aaa;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.gs-line{flex:1;height:1px;background:#ede9e0}
+.vote-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:8px;border:1px solid #ede9e0;transition:border-color .2s}
+.vote-card.voted{border-color:#4a3fd4;background:#fdfcff}
+.vc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+.vc-voted-tag{font-size:11px;color:#4a3fd4;flex-shrink:0}
+.vc-count-tag{font-size:11px;color:#ccc;flex-shrink:0}
+.vc-btn{width:100%;padding:12px;border-radius:11px;border:none;background:#4a3fd4;font-size:13px;font-weight:700;color:#fff;cursor:pointer;transition:background .15s}
+.vc-btn:hover:not(:disabled){background:#3a30b0}
+.vc-btn:disabled{background:#ede9e0;color:#bbb;cursor:not-allowed}
+.vc-bar-dual{position:relative;height:6px;border-radius:3px;background:#e8e4dc;overflow:hidden;margin-bottom:10px}
+.vc-bar-normal{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:#4a3fd4;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.vc-bar-guest{position:absolute;top:0;height:6px;background:linear-gradient(90deg,#c9890a,#e8b84b);transition:width .5s,left .5s}
+.vc-score-row{display:flex;justify-content:space-between;font-size:11px;color:#bbb;margin-bottom:6px}
+.vc-guest-score{color:#c9890a}
+
+/* ── 榜单 ── */
+.board-header{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 0 14px}
+.live-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.06em;color:#4a3fd4;background:#eeeefe;padding:3px 9px;border-radius:20px;margin-bottom:5px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:#4a3fd4;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+.live-sub{font-size:10px;color:#bbb;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
+.live-total{font-size:30px;color:#1a1a2e;line-height:1}
+.winner-banner{background:#fef3e2;border:1px solid #f0d898;border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.wb-trophy{font-size:20px}
+.wb-label{font-size:11px;color:#b7770d;margin-bottom:2px}
+.wb-name{font-size:14px;color:#1a1a2e}
+.board-row{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:7px;border:1px solid #ede9e0;transition:all .4s cubic-bezier(.4,0,.2,1)}
+.board-row.top5{background:#fef3e2;border-color:#f0d898}
+.br-header{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.br-rank{font-size:15px;color:#ccc;width:22px;text-align:center;flex-shrink:0;line-height:1}
+.br-medal{font-size:20px;width:26px;text-align:center;flex-shrink:0;line-height:1}
+.br-header-main{flex:1;min-width:0;font-size:15px;line-height:1.35;word-break:break-all}
+.br-header-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.br-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap;line-height:1.4}
+.vc-b1{background:#eeeefe;color:#4a3fd4}.vc-b2{background:#fde8e8;color:#c0392b}.vc-b3{background:#fef3e2;color:#b7770d}.vc-b4{background:#e2f5f0;color:#1a8a6e}
+.br-score-wrap{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap}
+.br-votes{font-size:20px;color:#1a1a2e;line-height:1}
+.br-label{font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:.04em;line-height:1}
+@keyframes pop{0%{transform:scale(0) rotate(-20deg);opacity:0}60%{transform:scale(1.3) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes shine{0%,100%{opacity:1}50%{opacity:.55}}
+.medal-pop{animation:pop .5s cubic-bezier(.4,0,.2,1) both}
+.medal-shine{animation:shine 2.5s ease-in-out infinite}
+
+/* ── 民意调查（参与端）── */
+.sv-prompt-card{background:linear-gradient(135deg,#fdfcff,#f2f0fd);border:1.5px solid #ded9f6;border-radius:16px;padding:18px;margin-bottom:14px}
+.sv-prompt-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:#4a3fd4;margin-bottom:8px}
+.sv-prompt-text{font-size:14px;line-height:1.7;color:#333;white-space:pre-wrap;word-break:break-all}
+.sv-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}
+.entry-card{background:#fff;border:1px solid #ede9e0;border-radius:14px;padding:14px;margin-bottom:10px}
+.entry-card.editing{border-color:#4a3fd4}
+.entry-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.entry-idx{font-size:10px;font-weight:700;letter-spacing:.06em;color:#aaa}
+.entry-content{font-size:14px;line-height:1.7;color:#1a1a2e;word-break:break-all;white-space:pre-wrap;margin-bottom:10px}
+.entry-kws{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.kw-chip{font-size:12px;font-weight:700;color:#4a3fd4;background:#eeeefe;border:1px solid #ded9f6;padding:3px 10px;border-radius:20px}
+.kw-pending{font-size:11px;color:#b7770d;background:#fef3e2;border:1px solid #f0d898;padding:3px 10px;border-radius:20px;animation:pulse 1.4s ease-in-out infinite}
+.kw-failed{font-size:11px;color:#c0392b;background:#fde8e8;border:1px solid #f5c6c6;padding:3px 10px;border-radius:20px}
+.kw-ai-tag{font-size:10px;color:#bbb;margin-right:2px}
+.sv-input-card{background:#fff;border:1.5px solid #ded9f6;border-radius:16px;padding:14px;margin-bottom:10px}
+.sv-input-card:focus-within{border-color:#4a3fd4}
+.sv-ta{width:100%;font-size:16px;border:none;background:none;outline:none;resize:none;font-family:inherit;line-height:1.7;min-height:76px}
+.sv-ta::placeholder{color:#ccc}
+.sv-submit{width:100%;padding:14px;border-radius:13px;border:none;background:#4a3fd4;font-size:14px;font-weight:700;color:#fff;cursor:pointer;transition:background .15s;margin-bottom:8px}
+.sv-submit:hover:not(:disabled){background:#3a30b0}
+.sv-submit:disabled{background:#ede9e0;color:#bbb;cursor:not-allowed}
+.sv-quota{font-size:11px;color:#bbb;text-align:center;margin-bottom:20px}
+.sv-sec-title{font-size:11px;font-weight:700;letter-spacing:.05em;color:#aaa;margin:22px 0 10px;display:flex;align-items:center;gap:10px}
+.sv-sec-title::after{content:'';flex:1;height:1px;background:#ede9e0}
+.sv-cloud-canvas{width:100%;height:260px;background:#fff;border:1px solid #ede9e0;border-radius:16px;margin-bottom:14px}
+.top-kw-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f0ece6}
+.top-kw-rank{font-size:12px;color:#ccc;width:20px;text-align:center;flex-shrink:0}
+.top-kw-name{font-size:14px;font-weight:600;flex:1;min-width:0;word-break:break-all}
+.top-kw-bar{flex:1.4;height:5px;border-radius:3px;background:#e8e4dc;overflow:hidden}
+.top-kw-fill{height:5px;border-radius:3px;background:#4a3fd4}
+.top-kw-cnt{font-size:12px;color:#888;width:34px;text-align:right;flex-shrink:0}
+
+/* ── 投屏模式（PC 大屏，深夜蓝）── */
+#screen-projection{position:fixed;inset:0;background:#0b0c1c;z-index:300;display:none;color:#e8e9f5;overflow:hidden}
+#screen-projection.active{display:block}
+.pj-grid{display:grid;grid-template-columns:300px 1fr 260px;gap:0;height:100vh}
+@media(max-width:980px){.pj-grid{grid-template-columns:1fr;overflow-y:auto;height:auto;min-height:100vh}}
+.pj-left{border-right:1px solid rgba(255,255,255,.07);padding:22px 18px;display:flex;flex-direction:column;min-height:0}
+.pj-right{border-left:1px solid rgba(255,255,255,.07);padding:22px 18px;overflow-y:auto}
+.pj-center{display:flex;flex-direction:column;padding:22px 26px;min-width:0;min-height:60vh}
+.pj-eyebrow{font-size:10px;font-weight:700;letter-spacing:.16em;color:#8b7ff5;margin-bottom:8px}
+.pj-title{font-family:'Playfair Display',serif;font-size:26px;line-height:1.25;margin-bottom:4px;word-break:break-all}
+.pj-sub{font-size:12px;color:#7a7c99;margin-bottom:10px;word-break:break-all}
+.pj-cloud-wrap{flex:1;min-height:320px;position:relative}
+.pj-cloud{width:100%;height:100%;display:block}
+.pj-sec{font-size:10px;font-weight:700;letter-spacing:.14em;color:#7a7c99;margin-bottom:12px}
+.pj-feed{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.pj-feed-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:11px 13px;animation:pj-in .45s cubic-bezier(.4,0,.2,1) both}
+@keyframes pj-in{0%{opacity:0;transform:translateY(-10px)}100%{opacity:1;transform:none}}
+.pj-feed-text{font-size:12px;color:#b9bbd4;line-height:1.55;margin-bottom:8px;word-break:break-all}
+.pj-feed-kws{display:flex;flex-wrap:wrap;gap:5px}
+.pj-chip{font-size:11px;font-weight:700;color:#c9c2ff;background:rgba(139,127,245,.14);border:1px solid rgba(139,127,245,.4);padding:2px 9px;border-radius:20px;box-shadow:0 0 12px rgba(139,127,245,.25)}
+.pj-scanning{font-size:11px;color:#e8b84b;display:inline-flex;align-items:center;gap:6px}
+.pj-scan-dot{width:6px;height:6px;border-radius:50%;background:#e8b84b;animation:pulse 1s ease-in-out infinite}
+.pj-failed{font-size:11px;color:#e57373}
+.pj-stat{margin-bottom:20px}
+.pj-stat-label{font-size:10px;letter-spacing:.1em;color:#7a7c99;margin-bottom:5px}
+.pj-stat-val{font-size:34px;font-weight:700;color:#fff;line-height:1}
+.pj-top-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.pj-top-rank{font-size:11px;color:#565873;width:18px;flex-shrink:0}
+.pj-top-name{font-size:13px;font-weight:600;color:#d5d6e8;flex:1;min-width:0;word-break:break-all}
+.pj-top-cnt{font-size:12px;color:#8b7ff5;flex-shrink:0}
+.pj-exit{position:fixed;top:14px;right:16px;z-index:310;font-size:12px;color:#7a7c99;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:6px 14px;cursor:pointer;transition:color .15s}
+.pj-exit:hover{color:#fff}
+.pj-live{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.1em;color:#5ee6b0;margin-bottom:16px}
+.pj-live-dot{width:6px;height:6px;border-radius:50%;background:#5ee6b0;animation:pulse 1.5s ease-in-out infinite}
+
+/* ── 管理后台（PC 优先）── */
+.admin-login-wrap{display:flex;align-items:center;justify-content:center;min-height:70vh;padding:24px}
+.admin-login-card{background:#fff;border:1px solid #ede9e0;border-radius:20px;padding:30px 26px;width:100%;max-width:340px}
+.alc-title{font-size:17px;font-weight:700;margin-bottom:4px}
+.alc-sub{font-size:12px;color:#aaa;margin-bottom:18px}
+.admin-input{width:100%;font-size:15px;padding:12px 14px;border-radius:10px;border:1px solid #e8e4dc;background:#f8f7f4;outline:none;font-family:inherit;margin-bottom:10px;transition:border-color .15s}
+.admin-input:focus{border-color:#4a3fd4;background:#fff}
+.admin-submit-btn{width:100%;padding:13px;border-radius:11px;border:none;background:#4a3fd4;font-size:13px;font-weight:700;color:#fff;cursor:pointer}
+.admin-err{font-size:12px;color:#c0392b;margin-top:8px;display:none}
+.atab-bar{display:flex;gap:6px;padding:18px 0 4px;flex-wrap:wrap}
+.atab{padding:9px 18px;font-size:13px;font-weight:600;color:#888;border:1px solid #e8e4dc;background:#fff;cursor:pointer;border-radius:22px;transition:all .15s}
+.atab.active{color:#fff;background:#4a3fd4;border-color:#4a3fd4}
+.admin-grid{display:grid;grid-template-columns:1fr;gap:14px;padding-top:14px}
+@media(min-width:960px){.admin-grid{grid-template-columns:1fr 1fr}}
+.admin-section{background:#fff;border:1px solid #ede9e0;border-radius:16px;padding:18px}
+.admin-section.span2{grid-column:1/-1}
+.as-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.as-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.as-label{font-size:13px;color:#888;flex-shrink:0}
+.as-value{font-size:14px;font-weight:700}
+.af-label{font-size:12px;font-weight:700;color:#4a3fd4;display:block;margin-bottom:6px;margin-top:12px}
+.af-label:first-child{margin-top:0}
+.af-input{width:100%;font-size:14px;padding:10px 12px;border-radius:9px;border:1px solid #e8e4dc;background:#f8f7f4;outline:none;font-family:inherit;transition:border-color .15s}
+.af-input:focus{border-color:#4a3fd4;background:#fff}
+.af-ta{width:100%;font-size:14px;padding:10px 12px;border-radius:9px;border:1px solid #e8e4dc;background:#f8f7f4;outline:none;font-family:inherit;line-height:1.6;resize:vertical;min-height:70px}
+.af-ta:focus{border-color:#4a3fd4;background:#fff}
+.af-num{width:90px;text-align:center}
+.phase-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.phase-btn{padding:10px 16px;border-radius:10px;border:1px solid #e8e4dc;background:#fff;font-size:12px;font-weight:600;color:#555;cursor:pointer;transition:all .15s}
+.phase-btn:hover{border-color:#4a3fd4;color:#4a3fd4}
+.phase-btn.primary{background:#4a3fd4;border-color:#4a3fd4;color:#fff}
+.phase-btn.primary:hover{background:#3a30b0;color:#fff}
+.phase-btn.danger{border-color:#f5c6c6;color:#c0392b}
+.phase-btn.danger:hover{background:#fff5f5}
+.phase-btn.gold{background:linear-gradient(135deg,#c9890a,#e8b84b);border:none;color:#fff}
+.phase-btn:disabled{opacity:.45;cursor:not-allowed}
+.progress-bars{display:flex;flex-direction:column;gap:9px}
+.pg-row{display:flex;align-items:center;gap:10px}
+.pg-label{font-size:12px;color:#888;width:64px;flex-shrink:0}
+.pg-track{flex:1;height:6px;border-radius:3px;background:#f0ece6;overflow:hidden}
+.pg-fill{height:6px;border-radius:3px;background:#4a3fd4;transition:width .4s}
+.pg-count{font-size:11px;color:#aaa;width:40px;text-align:right;flex-shrink:0}
+.arch-lock{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#888;background:#f1efe8;padding:3px 10px;border-radius:20px}
+.ai-hint{font-size:11px;color:#aaa;line-height:1.6;margin-top:8px}
+.ai-test-out{background:#f8f7f4;border:1px solid #e8e4dc;border-radius:10px;padding:12px;margin-top:10px;font-size:13px;display:none}
+
+/* ── 嘉宾 / 弹窗 / TOAST ── */
+.guest-vote-btn{width:100%;padding:14px;border-radius:13px;border:none;background:linear-gradient(135deg,#c9890a,#e8b84b,#c9890a);font-size:14px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 12px rgba(201,137,10,.35);letter-spacing:.04em;transition:opacity .15s;margin-bottom:16px}
+.guest-vote-btn:hover{opacity:.88}
+.guest-vote-btn.is-guest{background:linear-gradient(135deg,#b07c09,#d4a73a,#b07c09)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-card{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:340px;transform:translateY(12px);transition:transform .2s}
+.modal-overlay.open .modal-card{transform:none}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:12px;color:#aaa;margin-bottom:18px;line-height:1.5}
+.modal-input{width:100%;font-size:15px;padding:12px 14px;border-radius:10px;border:1px solid #e8e4dc;background:#f8f7f4;outline:none;font-family:inherit;margin-bottom:10px;transition:border-color .15s}
+.modal-input:focus{border-color:#c9890a;background:#fff}
+.modal-err{font-size:12px;color:#c0392b;margin-bottom:10px;display:none}
+.modal-btns{display:flex;gap:8px}
+.modal-cancel{flex:1;padding:12px;border-radius:10px;border:1px solid #e8e4dc;background:#fff;font-size:13px;font-weight:600;color:#888;cursor:pointer}
+.modal-confirm{flex:2;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#c9890a,#e8b84b);font-size:13px;font-weight:700;color:#fff;cursor:pointer}
+.toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;max-width:88vw;text-align:center}
+.toast.show{opacity:1}
+@media print{.nav,.toast{display:none!important}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="loading-logo">沙龙互动平台</div>
+  <div class="loading-bar-track"><div class="loading-bar-fill"></div></div>
+  <div style="font-size:12px;color:#aaa" id="loading-tip">正在连接数据库…</div>
+</div>
+
+<!-- NAV -->
+<div class="nav" id="nav">
+  <div class="nav-side">
+    <button class="nav-btn" id="nav-back" onclick="goLobby()" style="display:none" title="返回大厅">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="nav-btn" onclick="toggleAdmin()" title="管理后台">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+  <div class="nav-center">
+    <div class="nav-logo" id="nav-title">沙龙互动平台</div>
+    <div id="nav-status" class="nav-status ns-waiting" style="display:none"></div>
+  </div>
+  <div class="nav-side right">
+    <div class="nav-icon" id="nav-avatar" onclick="changeGroup()" title="切换小组" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span id="nav-group-badge"></span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: LOBBY -->
+<div class="screen" id="screen-lobby">
+  <div class="page">
+    <div class="lobby-hero">
+      <div class="lb-eyebrow">SALON · LIVE</div>
+      <div class="lb-title">沙龙互动平台</div>
+      <div class="lb-sub">选择一项活动加入现场互动</div>
+    </div>
+    <div class="lb-cards" id="lobby-cards"></div>
+    <div id="lobby-archived"></div>
+  </div>
+</div>
+
+<!-- SCREEN: 选组（思路征集）-->
+<div class="screen" id="screen-groupselect">
+  <div class="page"><div class="group-select-wrap">
+    <div class="gs-badge" id="gsel-badge"></div>
+    <div class="gs-title">选择你所在的小组</div>
+    <p class="gs-desc">进入后填写本组的内容。选择后可随时点击右上角头像切换小组。</p>
+    <div class="group-btn-list" id="group-btn-list"></div>
+  </div></div>
+</div>
+
+<!-- SCREEN: 思路征集 -->
+<div class="screen" id="screen-ideas">
+  <div id="ideas-waiting" class="waiting-wrap" style="display:none">
+    <div class="waiting-icon">⏳</div>
+    <div class="waiting-title">等待活动开始</div>
+    <div class="waiting-sub">主持人将很快开启场景录入环节<br>请稍候片刻</div>
+  </div>
+  <div id="ideas-main" style="display:none">
+    <div class="tab-bar" id="ideas-tabbar">
+      <button class="tab active" id="tab-submit" onclick="switchTab('submit')">场景录入</button>
+      <button class="tab" id="tab-vote" onclick="switchTab('vote')">投票</button>
+      <button class="tab" id="tab-board" onclick="switchTab('board')">榜单</button>
+    </div>
+    <div class="page">
+      <div class="panel active" id="panel-submit">
+        <div class="panel-header">
+          <div class="ph-badge">PHASE · SUBMISSION</div>
+          <div class="ph-title" id="submit-title"></div>
+          <div class="ph-desc">请填写你们认为具备落地条件的内容（每组最多 <span id="submit-scene-cap-hint">5</span> 个）</div>
+        </div>
+        <div class="scene-list" id="scene-list"></div>
+        <button class="add-scene-btn" id="add-scene-btn" onclick="addScene()">+ 添加场景</button>
+        <div class="limit-tip" id="limit-tip" style="display:none"></div>
+      </div>
+      <div class="panel" id="panel-vote">
+        <div id="guest-vote-area" style="padding:16px 0 4px">
+          <button class="guest-vote-btn" id="guest-vote-btn" onclick="openGuestModal()">✦ 嘉宾专属投票通道</button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">参与人数</div><div class="stat-value" id="sv-participants">-</div></div>
+          <div class="stat-card"><div class="stat-label">人均票数</div><div class="stat-value" id="sv-per">3</div></div>
+          <div class="stat-card"><div class="stat-label">累计得分</div><div class="stat-value" id="sv-total">0</div></div>
+          <div class="stat-card hl"><div class="stat-label">我的剩余票数</div><div class="stat-value" id="sv-remaining">3</div></div>
+        </div>
+        <div id="vote-list"></div>
+      </div>
+      <div class="panel" id="panel-board">
+        <div class="board-header">
+          <div>
+            <div class="live-badge" id="board-live-badge"><span class="live-dot"></span>LIVE</div>
+            <div class="live-sub">TOTAL SCORE</div>
+            <div class="live-total" id="board-total">0</div>
+          </div>
+        </div>
+        <div id="winner-banner" style="display:none" class="winner-banner">
+          <div class="wb-trophy">🏆</div>
+          <div><div class="wb-label">得分最多小组</div><div class="wb-name" id="winner-name">-</div></div>
+        </div>
+        <div id="board-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: 民意调查 -->
+<div class="screen" id="screen-survey">
+  <div id="survey-waiting" class="waiting-wrap" style="display:none">
+    <div class="waiting-icon">⏳</div>
+    <div class="waiting-title">等待活动开始</div>
+    <div class="waiting-sub">主持人将很快开启信息填报入口<br>请稍候片刻</div>
+  </div>
+  <div id="survey-main" class="page" style="display:none;padding-top:20px">
+    <div class="sv-prompt-card">
+      <div class="sv-prompt-label">本期话题</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:8px;word-break:break-all" id="survey-title"></div>
+      <div class="sv-prompt-text" id="survey-prompt"></div>
+    </div>
+    <div class="sv-stats">
+      <div class="stat-card"><div class="stat-label">参与人数</div><div class="stat-value" id="svy-participants">0</div></div>
+      <div class="stat-card"><div class="stat-label">想法总数</div><div class="stat-value" id="svy-entries">0</div></div>
+      <div class="stat-card hl"><div class="stat-label">我的剩余条数</div><div class="stat-value" id="svy-quota">2</div></div>
+    </div>
+    <div id="survey-input-block">
+      <div class="sv-input-card">
+        <textarea class="sv-ta" id="svy-input" placeholder="写下你的想法…提交后 AI 会实时提炼你的关键观点"></textarea>
+      </div>
+      <button class="sv-submit" id="svy-submit-btn" onclick="submitSurveyEntry()">提交想法 ✦</button>
+      <div class="sv-quota" id="svy-quota-tip"></div>
+    </div>
+    <div class="sv-sec-title" id="svy-mine-title">我的填报</div>
+    <div id="survey-mine"></div>
+    <div id="survey-summary" style="display:none">
+      <div class="sv-sec-title">全场关键词</div>
+      <canvas class="sv-cloud-canvas" id="svy-cloud"></canvas>
+      <div id="svy-topkw"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: 投屏模式 -->
+<div id="screen-projection">
+  <button class="pj-exit" onclick="leaveProjection()">退出投屏 ×</button>
+  <button class="pj-exit" id="pj-retry-btn" style="right:128px;display:none;color:#e8b84b;border-color:rgba(232,184,75,.45)" onclick="pjRetryFailed()">⟳ 批量重试失败</button>
+  <button class="pj-exit" id="pj-stats-btn" style="right:300px;display:none;background:linear-gradient(135deg,#c9890a,#e8b84b);border:none;color:#fff;font-weight:700" onclick="runSummarize()">✦ 一键统计</button>
+  <div class="pj-grid">
+    <div class="pj-left">
+      <div class="pj-sec">AI 提炼流 · EXTRACTION</div>
+      <div class="pj-feed" id="pj-feed"></div>
+    </div>
+    <div class="pj-center">
+      <div class="pj-live" id="pj-live"><span class="pj-live-dot"></span>LIVE</div>
+      <div class="pj-eyebrow">OPINION CLOUD</div>
+      <div class="pj-title" id="pj-title"></div>
+      <div class="pj-sub" id="pj-sub"></div>
+      <div class="pj-cloud-wrap"><canvas class="pj-cloud" id="pj-cloud"></canvas>
+        <div id="pj-summarize-ov" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:rgba(11,12,28,.85);z-index:5;border-radius:12px">
+          <div style="display:flex;gap:8px"><span class="pj-scan-dot" style="width:10px;height:10px"></span><span class="pj-scan-dot" style="width:10px;height:10px;animation-delay:.2s"></span><span class="pj-scan-dot" style="width:10px;height:10px;animation-delay:.4s"></span></div>
+          <div id="pj-sum-text" style="font-size:16px;color:#e8b84b;letter-spacing:.06em;font-weight:700"></div>
+          <div style="font-size:11px;color:#7a7c99">全局归纳 · 通常需要十几秒</div>
+        </div></div>
+    </div>
+    <div class="pj-right">
+      <div class="pj-sec">实时数据 · STATS</div>
+      <div class="pj-stat"><div class="pj-stat-label">参与人数</div><div class="pj-stat-val" id="pj-participants">0</div></div>
+      <div class="pj-stat"><div class="pj-stat-label">想法总数</div><div class="pj-stat-val" id="pj-entries">0</div></div>
+      <div class="pj-stat"><div class="pj-stat-label">关键词总数</div><div class="pj-stat-val" id="pj-kwcount">0</div></div>
+      <div class="pj-sec" style="margin-top:8px">TOP 关键词</div>
+      <div id="pj-top"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: 管理员登录 -->
+<div class="screen" id="screen-admin-login">
+  <div class="admin-login-wrap"><div class="admin-login-card">
+    <div class="alc-title">管理员登录</div>
+    <div class="alc-sub">请输入管理员密码</div>
+    <input class="admin-input" type="password" id="admin-pwd-input" placeholder="输入密码" onkeydown="if(event.key==='Enter')adminLogin()">
+    <button class="admin-submit-btn" onclick="adminLogin()">进入管理后台</button>
+    <div class="admin-err" id="admin-err">密码错误，请重试</div>
+    <button style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid #e8e4dc;background:none;font-size:13px;color:#aaa;cursor:pointer" onclick="goLobby()">← 返回</button>
+  </div></div>
+</div>
+
+<!-- SCREEN: 管理后台 -->
+<div class="screen" id="screen-admin">
+  <div class="page-wide">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 0 0">
+      <div style="font-family:'Playfair Display',serif;font-size:20px">管理后台</div>
+      <button style="font-size:12px;color:#aaa;border:none;background:none;cursor:pointer" onclick="adminLogout()">退出登录</button>
+    </div>
+    <div class="atab-bar">
+      <button class="atab active" id="atab-ideas" onclick="switchAdminTab('ideas')">思路征集</button>
+      <button class="atab" id="atab-survey" onclick="switchAdminTab('survey')">民意调查</button>
+      <button class="atab" id="atab-ai" onclick="switchAdminTab('ai')">AI 配置</button>
+    </div>
+    <div class="admin-grid" id="admin-body"></div>
+  </div>
+</div>
+
+<!-- 嘉宾弹窗 -->
+<div class="modal-overlay" id="guest-modal">
+  <div class="modal-card">
+    <div class="modal-title">⭐ 嘉宾身份验证</div>
+    <div class="modal-sub" id="guest-modal-sub">请输入嘉宾密码。</div>
+    <input class="modal-input" type="password" id="guest-pwd-input" placeholder="输入嘉宾密码" onkeydown="if(event.key==='Enter')confirmGuestLogin()">
+    <div class="modal-err" id="guest-err">密码错误，请重试</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeGuestModal()">取消</button>
+      <button class="modal-confirm" onclick="confirmGuestLogin()">确认身份 →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"></script>
+<script>
+/* ═══════════════ 基础配置 ═══════════════ */
+const SUPABASE_URL = 'https://qawodgamzwgkajnmsgpz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhd29kZ2Ftendna2Fqbm1zZ3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjYzODAsImV4cCI6MjA4OTgwMjM4MH0.YxPN1ycb-CJRn1b3j0-I50A-sYnHSAXbjJ0ggj2U-88';
+const FN_AI = SUPABASE_URL + '/functions/v1/ai-executor';
+const ADMIN_PASSWORD = 'salon2025';
+const DOT_COLORS = ['#4a3fd4','#c0392b','#b7770d','#1a8a6e','#8e44ad','#2874a6','#148f77','#ca6f1e','#6c5ce7','#e17055','#00b894','#0984e3','#d63031','#6d4c41','#fdcb6e','#e84393','#00cec9','#a29bfe','#fd79a8','#636e72'];
+const BADGE_CLS = ['vc-b1','vc-b2','vc-b3','vc-b4'];
+const MEDALS = ['🥇','🥈','🥉','🏅','🏅'];
+const CLOUD_DARK = ['#8b7ff5','#5ee6b0','#e8b84b','#ff8fab','#6cc7ff','#c9c2ff','#ffd47e','#7ef5d8'];
+const CLOUD_LIGHT = ['#4a3fd4','#1a8a6e','#b7770d','#c0392b','#2874a6','#8e44ad','#ca6f1e','#148f77'];
+
+let VOTER_ID = localStorage.getItem('salon_voter_id');
+if (!VOTER_ID) { VOTER_ID = 'v_' + Math.random().toString(36).slice(2) + Date.now(); localStorage.setItem('salon_voter_id', VOTER_ID); }
+
+/* ═══════════════ 全局状态 ═══════════════ */
+let allActivities = [];        // 全部活动
+let curAct = null;             // 当前正在浏览的活动（进行中或封板）
+let curView = 'lobby';         // lobby / groupselect / ideas / survey / admin / projection
+let isAdmin = false;
+let lobbyCounts = {};          // activity_id -> 参与人数
+
+// 思路征集模块状态
+let myGroup = -1, allScenes = [], voteCounts = {}, guestVoteCounts = {};
+let myVotes = [], myGuestVotes = [], isGuest = false, medalAnimated = {};
+let editingSceneId = null, draftSavePending = false, editSavePending = false, votePending = false, guestVotePending = false;
+const deletePendingIds = new Set();
+
+// 民意调查模块状态
+let svyEntries = [];           // 当前调查活动全部条目
+let svyEditingId = null;       // 正在编辑的条目 id
+let svySubmitPending = false;
+const extractTriggered = {};   // entry_id -> 上次触发提炼时间戳
+
+// 后台状态
+let adminTab = 'ideas';
+let adminFormsBuilt = { ideas: false, survey: false, ai: false };
+let aiConfigRow = null, aiPromptRows = [];
+
+// 同步
+let pollingTimer = null, sbClient = null, sbChannel = null, syncDebounce = null, syncing = false;
+
+/* ═══════════════ 工具函数 ═══════════════ */
+async function api(path, method = 'GET', body = null, extraPrefer = '') {
+  let prefer = extraPrefer;
+  if (method === 'POST' && !prefer) prefer = 'return=representation';
+  if ((method === 'PATCH' || method === 'DELETE') && !prefer) prefer = 'return=minimal';
+  const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+  if (prefer) headers['Prefer'] = prefer;
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
+  if (!res.ok) { const t = await res.text(); throw new Error(t || res.statusText); }
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : [];
+}
+function shortErr(msg) {
+  if (!msg || typeof msg !== 'string') return '';
+  try { const j = JSON.parse(msg); return (j.message || j.hint || j.details || msg).slice(0, 120); }
+  catch (_) { return msg.slice(0, 120); }
+}
+function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showToast(msg, dur = 2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), dur);
+}
+function autoResize(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+function cfg(act, key, dflt) { return (act && act.config && act.config[key] != null) ? act.config[key] : dflt; }
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('zh-CN'); } catch(_) { return ''; } }
+function isArchived(act) { return !!(act && act.archived_at); }
+function groupCountOf(act) { return Math.min(20, Math.max(1, parseInt(cfg(act,'group_count',4),10) || 4)); }
+function maxScenesOf(act) { return Math.min(50, Math.max(1, parseInt(cfg(act,'max_scenes_per_group',5),10) || 5)); }
+function groupLabel(i) { return '小组 ' + String(i + 1).padStart(2, '0'); }
+function statusMeta(act) {
+  if (isArchived(act)) return ['已封板', 'ns-archived'];
+  const m = { waiting:['等待开始','ns-waiting'], submitting:['录入中','ns-submitting'], voting:['投票中','ns-voting'], collecting:['填报中','ns-collecting'], ended:['已结束','ns-ended'] };
+  return m[act && act.status] || ['未知','ns-waiting'];
+}
+
+/* ═══════════════ 数据加载 ═══════════════ */
+async function loadActivities() {
+  allActivities = await api('activities?select=*&order=created_at.desc');
+  if (curAct) { const fresh = allActivities.find(a => a.id === curAct.id); if (fresh) curAct = fresh; }
+}
+function liveAct(type) { return allActivities.find(a => a.type === type && !a.archived_at) || null; }
+async function loadLobbyCounts() {
+  try {
+    const parts = await api('participants?select=activity_id');
+    lobbyCounts = {};
+    parts.forEach(p => { lobbyCounts[p.activity_id] = (lobbyCounts[p.activity_id] || 0) + 1; });
+  } catch (_) {}
+}
+async function loadScenes(actId) {
+  const data = await api(`scenes?activity_id=eq.${actId}&select=*&order=id.asc`);
+  allScenes = data.map(r => ({ id: r.id, name: r.name, pain_point: r.pain_point || '', ai_solution: r.ai_solution || '', time_saving: r.time_saving || '', group: r.group_index }));
+}
+async function loadVotes(actId) {
+  const data = await api(`votes?activity_id=eq.${actId}&select=scene_id,voter_id`);
+  if (!votePending) {
+    voteCounts = {};
+    data.forEach(r => { if (!r.voter_id.startsWith('guest_')) voteCounts[r.scene_id] = (voteCounts[r.scene_id] || 0) + 1; });
+  }
+  if (!guestVotePending) {
+    guestVoteCounts = {};
+    data.forEach(r => { if (r.voter_id.startsWith('guest_')) guestVoteCounts[r.scene_id] = (guestVoteCounts[r.scene_id] || 0) + 1; });
+  }
+  myVotes = data.filter(r => r.voter_id === VOTER_ID).map(r => r.scene_id);
+  myGuestVotes = data.filter(r => r.voter_id === 'guest_' + VOTER_ID).map(r => r.scene_id);
+}
+async function loadSurveyEntries(actId) {
+  svyEntries = await api(`survey_entries?activity_id=eq.${actId}&select=*&order=created_at.asc`);
+}
+async function joinParticipants(actId, groupIndex) {
+  const body = { voter_id: VOTER_ID, group_index: groupIndex, activity_id: actId };
+  try {
+    await api(`participants?on_conflict=voter_id,activity_id`, 'POST', body, 'resolution=ignore-duplicates,return=minimal');
+  } catch (_) {
+    try { await api('participants', 'POST', body, 'return=minimal'); } catch (_) {}
+  }
+}
+
+/* ═══════════════ 视图路由 ═══════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+function setNav(title, act, opts) {
+  opts = opts || {};
+  document.getElementById('nav-title').textContent = title || '沙龙互动平台';
+  const st = document.getElementById('nav-status');
+  if (act) { const [t, c] = statusMeta(act); st.textContent = t; st.className = 'nav-status ' + c; st.style.display = 'inline-block'; }
+  else st.style.display = 'none';
+  document.getElementById('nav-back').style.display = opts.back ? 'flex' : 'none';
+  const av = document.getElementById('nav-avatar');
+  av.style.display = opts.avatar ? 'flex' : 'none';
+  const badge = document.getElementById('nav-group-badge');
+  if (opts.avatar && myGroup >= 0) { badge.textContent = String(myGroup + 1).padStart(2, '0'); badge.style.display = 'block'; }
+  else badge.style.display = 'none';
+}
+function goLobby() {
+  curAct = null; curView = 'lobby'; isAdmin = false;
+  setNav('沙龙互动平台', null, {});
+  renderLobby();
+  showScreen('screen-lobby');
+}
+
+/* ═══════════════ 活动大厅 ═══════════════ */
+function renderLobby() {
+  const wrap = document.getElementById('lobby-cards');
+  const types = [
+    { type: 'ideas',  name: '思路征集', badge: 't-ideas',  desc: '分组录入 · 现场投票 · 实时榜单' },
+    { type: 'survey', name: '民意调查', badge: 't-survey', desc: '想法填报 · AI 提炼 · 词云大屏' },
+  ];
+  wrap.innerHTML = '';
+  types.forEach(t => {
+    const act = liveAct(t.type);
+    const card = document.createElement('div');
+    card.className = 'lb-card' + (act ? '' : ' disabled');
+    const [stText, stCls] = act ? statusMeta(act) : ['未开设', 'ns-waiting'];
+    const cnt = act ? (lobbyCounts[act.id] || 0) : 0;
+    card.innerHTML = `
+      <div class="lb-card-top">
+        <span class="lb-type-badge ${t.badge}">${t.name}</span>
+        <span class="nav-status ${stCls}">${stText}</span>
+      </div>
+      <div class="lb-card-title">${act ? escHtml(act.title) : '本类活动暂未开设'}</div>
+      <div class="lb-card-sub">${act ? escHtml(act.subtitle || t.desc) : '等待管理员在后台创建新一期活动'}</div>
+      <div class="lb-meta">
+        <span class="lb-count">${act ? cnt + ' 人已参与' : ''}</span>
+        <span class="lb-enter">${act ? '进入活动 →' : ''}</span>
+      </div>`;
+    if (act) card.onclick = () => openActivity(act.id);
+    wrap.appendChild(card);
+  });
+  const archived = allActivities.filter(a => a.archived_at);
+  const archWrap = document.getElementById('lobby-archived');
+  if (!archived.length) { archWrap.innerHTML = ''; return; }
+  let html = '<div class="lb-arch-title">往期活动 · 封板存档</div>';
+  archived.forEach(a => {
+    const badge = a.type === 'ideas' ? '<span class="arch-badge t-ideas">思路征集</span>' : '<span class="arch-badge t-survey">民意调查</span>';
+    html += `<div class="arch-item" onclick="openActivity(${a.id})">${badge}<span class="arch-name">${escHtml(a.title)}</span><span class="arch-date">${fmtDate(a.archived_at)} 封板</span></div>`;
+  });
+  archWrap.innerHTML = html;
+}
+
+async function openActivity(id) {
+  const act = allActivities.find(a => a.id === id);
+  if (!act) { showToast('活动不存在或已被移除'); return; }
+  curAct = act;
+  if (act.type === 'ideas') await enterIdeas();
+  else await enterSurvey();
+}
+
+/* ═══════════════ 思路征集模块 ═══════════════ */
+async function enterIdeas() {
+  curView = 'ideas';
+  myGroup = parseInt(localStorage.getItem('salon_group_' + curAct.id) ?? '-1', 10);
+  editingSceneId = null; isGuest = false; medalAnimated = {};
+  await Promise.all([loadScenes(curAct.id), loadVotes(curAct.id)]);
+  routeIdeas(true);
+}
+function ideasReadonly() { return isArchived(curAct) || curAct.status === 'ended'; }
+function routeIdeas(forceTab) {
+  setNav(curAct.title, curAct, { back: true, avatar: !isArchived(curAct) && curAct.status !== 'waiting' });
+  showScreen('screen-ideas');
+  const gcount = groupCountOf(curAct);
+  if (myGroup >= gcount) { myGroup = -1; localStorage.removeItem('salon_group_' + curAct.id); }
+  if (!isArchived(curAct) && curAct.status === 'waiting') {
+    document.getElementById('ideas-waiting').style.display = 'flex';
+    document.getElementById('ideas-main').style.display = 'none';
+    return;
+  }
+  if (!isArchived(curAct) && myGroup < 0) { buildGroupSelect(); showScreen('screen-groupselect'); return; }
+  document.getElementById('ideas-waiting').style.display = 'none';
+  document.getElementById('ideas-main').style.display = 'block';
+  // 封板/结束：只保留榜单
+  const ro = ideasReadonly();
+  document.getElementById('tab-submit').style.display = ro ? 'none' : 'block';
+  document.getElementById('tab-vote').style.display = ro ? 'none' : 'block';
+  document.getElementById('board-live-badge').innerHTML = isArchived(curAct)
+    ? '🔒 已封板' : '<span class="live-dot"></span>LIVE';
+  if (forceTab) {
+    if (ro) switchTab('board');
+    else if (curAct.status === 'voting') switchTab('vote');
+    else switchTab('submit');
+  } else {
+    const active = document.querySelector('#ideas-tabbar .tab.active');
+    switchTab(active ? active.id.replace('tab-','') : 'board');
+  }
+}
+function buildGroupSelect() {
+  setNav(curAct.title, curAct, { back: true });
+  document.getElementById('gsel-badge').textContent = curAct.subtitle || curAct.title;
+  const list = document.getElementById('group-btn-list');
+  list.innerHTML = '';
+  const gcount = groupCountOf(curAct);
+  for (let i = 0; i < gcount; i++) {
+    const cnt = allScenes.filter(s => s.group === i && s.name.trim() !== '').length;
+    const btn = document.createElement('button');
+    btn.className = 'group-btn';
+    btn.innerHTML = `<div class="gb-dot" style="background:${DOT_COLORS[i % DOT_COLORS.length]}"></div><span class="gb-name">${groupLabel(i)}</span><span class="gb-count">${cnt} 个场景</span><span class="gb-arrow">›</span>`;
+    btn.onclick = () => selectGroup(i);
+    list.appendChild(btn);
+  }
+}
+async function selectGroup(gi) {
+  myGroup = gi;
+  localStorage.setItem('salon_group_' + curAct.id, gi);
+  joinParticipants(curAct.id, gi);
+  routeIdeas(true);
+}
+function changeGroup() {
+  if (curView !== 'ideas' || !curAct || isArchived(curAct)) return;
+  myGroup = -1;
+  localStorage.removeItem('salon_group_' + curAct.id);
+  editingSceneId = null;
+  buildGroupSelect();
+  showScreen('screen-groupselect');
+}
+function switchTab(name) {
+  ['submit','vote','board'].forEach(n => {
+    document.getElementById('tab-' + n).classList.toggle('active', n === name);
+    document.getElementById('panel-' + n).classList.toggle('active', n === name);
+  });
+  if (name === 'submit') renderSceneList();
+  if (name === 'vote') renderVoteList();
+  if (name === 'board') renderBoard();
+}
+
+/* —— 场景录入 —— */
+function myScenes() { return allScenes.filter(s => s.group === myGroup); }
+function renderSceneList() {
+  if (editingSceneId !== null && editingSceneId !== 'new') return;
+  const list = document.getElementById('scene-list');
+  const maxScenes = maxScenesOf(curAct);
+  const isSubmitting = curAct.status === 'submitting' && !isArchived(curAct);
+  document.getElementById('submit-title').textContent = curAct.title;
+  document.getElementById('submit-scene-cap-hint').textContent = String(maxScenes);
+  const visible = myScenes().filter(s => s.name.trim() !== '');
+  list.innerHTML = '';
+  if (!visible.length && !isSubmitting && !editingSceneId) list.innerHTML = '<p class="empty-hint">本组暂无场景</p>';
+  visible.forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'scene-item';
+    item.id = 'scene-item-' + s.id;
+    item.innerHTML = `
+      <div class="scene-item-header">
+        <div style="flex:1;min-width:0;font-size:15px;line-height:1.4;word-break:break-all">${escHtml(s.name)}</div>
+        ${isSubmitting ? `<div class="scene-actions">
+          <button class="sa-btn" onclick="editScene(${s.id})" title="编辑"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="sa-btn sa-del" onclick="deleteScene(${s.id})" title="删除"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>` : ''}
+      </div>
+      ${buildSceneDisplayHtml(s, { hideName: true, prefix: 'sub' })}`;
+    list.appendChild(item);
+  });
+  if (editingSceneId === 'new' && isSubmitting) {
+    const d = document.createElement('div');
+    d.className = 'scene-item editing';
+    d.id = 'scene-item-new';
+    d.innerHTML = `${buildFieldInputs('new')}
+      <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid #ede9e0">
+        <button class="sa-btn sa-del" onclick="cancelDraft()" title="取消"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        <button class="sa-btn" onclick="saveDraftScene()" title="保存" style="background:#eeeefe;border-color:#4a3fd4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4a3fd4" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></button>
+      </div>`;
+    list.appendChild(d);
+    initFieldInputs('new');
+  }
+  const atLimit = visible.length >= maxScenes;
+  const addBtn = document.getElementById('add-scene-btn');
+  const tip = document.getElementById('limit-tip');
+  tip.textContent = '已达到本组最多 ' + maxScenes + ' 个场景的上限';
+  addBtn.style.display = isSubmitting ? 'block' : 'none';
+  addBtn.disabled = atLimit || !!editingSceneId;
+  tip.style.display = (isSubmitting && atLimit) ? 'block' : 'none';
+}
+function buildFieldInputs(id, scene) {
+  return `
+    <div class="sf-group"><div class="sf-label">AI 场景名称</div><div class="sf-box"><textarea class="sf-ta" id="ta-name-${id}" placeholder="4～7 个字概括">${scene ? escHtml(scene.name) : ''}</textarea></div></div>
+    <div class="sf-group"><div class="sf-label">痛点回溯</div><div class="sf-box"><textarea class="sf-ta" id="ta-pain-${id}" placeholder="这个场景过去是怎么开展的？有什么痛点？">${scene ? escHtml(scene.pain_point || '') : ''}</textarea></div></div>
+    <div class="sf-group"><div class="sf-label">AI 应用方案</div><div class="sf-box"><textarea class="sf-ta" id="ta-sol-${id}" placeholder="希望 AI 在其中能解决什么核心问题？">${scene ? escHtml(scene.ai_solution || '') : ''}</textarea></div></div>
+    <div class="sf-group"><div class="sf-label">价值量化</div><div class="sf-box"><textarea class="sf-ta" id="ta-time-${id}" placeholder="例如：每周帮我节省3小时">${scene ? escHtml(scene.time_saving || '') : ''}</textarea></div></div>`;
+}
+function initFieldInputs(id) {
+  ['name','pain','sol','time'].forEach(f => {
+    const ta = document.getElementById(`ta-${f}-${id}`);
+    if (ta) { autoResize(ta); ta.addEventListener('input', () => autoResize(ta)); }
+  });
+  const n = document.getElementById(`ta-name-${id}`);
+  if (n) n.focus();
+}
+function editScene(id) {
+  const scene = allScenes.find(s => s.id === id);
+  if (!scene) return;
+  editSavePending = false; editingSceneId = id;
+  const item = document.getElementById('scene-item-' + id);
+  item.classList.add('editing');
+  item.innerHTML = `${buildFieldInputs(id, scene)}
+    <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid #ede9e0">
+      <button class="sa-btn sa-del" onclick="cancelEdit(${id})" title="取消"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <button class="sa-btn" onclick="saveScene(${id})" title="保存" style="background:#eeeefe;border-color:#4a3fd4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4a3fd4" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></button>
+    </div>`;
+  initFieldInputs(id);
+}
+function cancelEdit(id) {
+  editSavePending = false; editingSceneId = null;
+  renderSceneList();
+}
+async function saveScene(id) {
+  if (editSavePending) { showToast('正在保存，请稍候'); return; }
+  const name = (document.getElementById(`ta-name-${id}`)?.value || '').trim();
+  const pain = (document.getElementById(`ta-pain-${id}`)?.value || '').trim();
+  const sol  = (document.getElementById(`ta-sol-${id}`)?.value || '').trim();
+  const time = (document.getElementById(`ta-time-${id}`)?.value || '').trim();
+  if (!name) { showToast('场景名称不能为空'); return; }
+  if (!window.confirm('确认保存对该场景的修改？')) return;
+  editSavePending = true;
+  try {
+    await api(`scenes?id=eq.${id}`, 'PATCH', { name, pain_point: pain, ai_solution: sol, time_saving: time });
+    const s = allScenes.find(x => x.id === id);
+    if (s) { s.name = name; s.pain_point = pain; s.ai_solution = sol; s.time_saving = time; }
+    editingSceneId = null;
+    renderSceneList();
+    showToast('保存成功');
+  } catch (e) { showToast('保存失败: ' + shortErr(e.message), 4000); }
+  finally { editSavePending = false; }
+}
+function addScene() {
+  if (isAdmin) { showToast('管理员不参与录入'); return; }
+  const saved = myScenes().filter(s => s.name.trim() !== '');
+  if (saved.length >= maxScenesOf(curAct)) return;
+  editingSceneId = 'new';
+  renderSceneList();
+}
+async function saveDraftScene() {
+  const name = (document.getElementById('ta-name-new')?.value || '').trim();
+  const pain = (document.getElementById('ta-pain-new')?.value || '').trim();
+  const sol  = (document.getElementById('ta-sol-new')?.value || '').trim();
+  const time = (document.getElementById('ta-time-new')?.value || '').trim();
+  if (!name) { showToast('场景名称不能为空'); document.getElementById('ta-name-new')?.focus(); return; }
+  if (draftSavePending) { showToast('正在保存，请稍候'); return; }
+  if (!window.confirm('确认提交该场景？\n提交后将保存到本小组，并占用一个场景名额。')) return;
+  draftSavePending = true;
+  try {
+    const ins = await api('scenes?select=*', 'POST', { name, pain_point: pain, ai_solution: sol, time_saving: time, group_index: myGroup, activity_id: curAct.id });
+    if (ins[0]) allScenes.push({ id: ins[0].id, name, pain_point: pain, ai_solution: sol, time_saving: time, group: myGroup });
+    editingSceneId = null;
+    renderSceneList();
+    showToast('场景已保存 ✓');
+  } catch (e) { showToast('添加失败: ' + shortErr(e.message), 4000); }
+  finally { draftSavePending = false; }
+}
+function cancelDraft() { draftSavePending = false; editingSceneId = null; renderSceneList(); }
+async function deleteScene(id) {
+  if (deletePendingIds.has(id)) { showToast('正在删除，请稍候'); return; }
+  if (!window.confirm('确认删除该场景？删除后不可恢复。')) return;
+  deletePendingIds.add(id);
+  try {
+    await api(`scenes?id=eq.${id}`, 'DELETE');
+    allScenes = allScenes.filter(s => s.id !== id);
+    editingSceneId = null;
+    renderSceneList();
+  } catch (e) { showToast('删除失败，请重试'); }
+  finally { deletePendingIds.delete(id); }
+}
+
+/* —— 场景展示卡片（录入/投票完整展示，榜单折叠）—— */
+function buildSceneDisplayHtml(s, opts) {
+  const hideName = opts && opts.hideName;
+  const prefix = (opts && opts.prefix) || 'sc';
+  const isBoard = prefix === 'brd';
+  const detailId = prefix + '-det-' + s.id, toggleId = prefix + '-tog-' + s.id;
+  const nameBlock = hideName ? '' : `<div style="font-size:15px;line-height:1.4;word-break:break-all">${escHtml(s.name)}</div>`;
+  const painBlock = `<div class="sc-field"><div class="sc-field-label" style="color:#888">痛点回溯</div><div class="sc-field-val">${escHtml(s.pain_point || '')}</div></div>`;
+  const solBlock = `<div class="sc-field"><div class="sc-field-label" style="color:#1a8a6e">AI 应用方案</div><div class="sc-field-val">${escHtml(s.ai_solution || '')}</div></div>`;
+  const vTxt = (s.time_saving != null && String(s.time_saving).trim() !== '') ? String(s.time_saving).trim() : '';
+  const valueBlock = vTxt ? `<div class="sc-value"><div class="sc-value-pill"><span class="sc-value-pill-text">⏱ ${escHtml(vTxt)}</span></div></div>` : '';
+  if (!isBoard) return `<div class="sc-card">${nameBlock}${solBlock}${painBlock}${valueBlock}</div>`;
+  const hasDetail = s.pain_point || s.ai_solution;
+  return `<div class="sc-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div style="flex:1;min-width:0">${vTxt ? `<div class="sc-value" style="padding-top:4px;margin-top:0;border-top:none"><div class="sc-value-pill"><span class="sc-value-pill-text">⏱ ${escHtml(vTxt)}</span></div></div>` : ''}</div>
+      ${hasDetail ? `<button class="sc-toggle" id="${toggleId}" onclick="toggleScCard('${detailId}','${toggleId}')">展开详情 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 3.5l3 3 3-3"/></svg></button>` : ''}
+    </div>
+    ${hasDetail ? `<div id="${detailId}" style="display:none">${solBlock}${painBlock}</div>` : ''}
+  </div>`;
+}
+function toggleScCard(detailId, toggleId) {
+  const det = document.getElementById(detailId), btn = document.getElementById(toggleId);
+  if (!det || !btn) return;
+  const open = det.style.display === 'none';
+  det.style.display = open ? 'block' : 'none';
+  btn.classList.toggle('open', open);
+  btn.innerHTML = (open ? '收起 ' : '展开详情 ') + `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="${open ? 'M2 6.5l3-3 3 3' : 'M2 3.5l3 3 3-3'}"/></svg>`;
+}
+
+/* —— 投票 —— */
+function scoreOf(id) { return (voteCounts[id] || 0) + (guestVoteCounts[id] || 0) * guestWeight(); }
+function guestWeight() { return Math.max(1, parseInt(cfg(curAct, 'guest_weight', 2), 10) || 2); }
+function guestVotesMax() { return Math.max(1, parseInt(cfg(curAct, 'guest_votes', 3), 10) || 3); }
+function votesPerPerson() { return Math.max(1, parseInt(cfg(curAct, 'votes_per_person', 3), 10) || 3); }
+function renderVoteList() {
+  const list = document.getElementById('vote-list');
+  const vpp = votesPerPerson();
+  const remaining = Math.max(0, vpp - myVotes.length);
+  document.getElementById('sv-remaining').textContent = remaining;
+  document.getElementById('sv-per').textContent = vpp;
+  const normalTotal = Object.values(voteCounts).reduce((a,b)=>a+b,0);
+  const guestTotal = Object.values(guestVoteCounts).reduce((a,b)=>a+b,0);
+  document.getElementById('sv-total').textContent = normalTotal + guestTotal * guestWeight();
+  const maxScore = Math.max(...allScenes.map(x => scoreOf(x.id)), 1);
+  const gBtn = document.getElementById('guest-vote-btn');
+  if (isGuest) {
+    gBtn.classList.add('is-guest');
+    gBtn.innerHTML = `✦ 嘉宾身份已激活 · 剩余 ${Math.max(0, guestVotesMax() - myGuestVotes.length)} 票`;
+    gBtn.onclick = null;
+  } else {
+    gBtn.classList.remove('is-guest');
+    gBtn.innerHTML = '✦ 嘉宾专属投票通道';
+    gBtn.onclick = openGuestModal;
+  }
+  document.getElementById('guest-vote-area').style.display = curAct.status === 'voting' && !isArchived(curAct) ? 'block' : 'none';
+  const valid = allScenes.filter(s => s.name.trim() !== '');
+  if (!valid.length) { list.innerHTML = '<p class="empty-hint">等待主持人开启录入阶段</p>'; return; }
+  list.innerHTML = '';
+  const gcount = groupCountOf(curAct);
+  for (let gi = 0; gi < gcount; gi++) {
+    const gScenes = valid.filter(s => s.group === gi);
+    if (!gScenes.length) continue;
+    const sec = document.createElement('div');
+    sec.className = 'group-section';
+    sec.innerHTML = `<div class="gs-label"><span>${groupLabel(gi)}</span><div class="gs-line"></div></div>`;
+    gScenes.forEach(s => {
+      const voted = myVotes.includes(s.id);
+      const gVoted = myGuestVotes.includes(s.id);
+      const canVote = remaining > 0 && !voted && curAct.status === 'voting' && !isArchived(curAct);
+      const canGuest = isGuest && !gVoted && myGuestVotes.length < guestVotesMax() && curAct.status === 'voting' && !isArchived(curAct);
+      const nCnt = voteCounts[s.id] || 0, gCnt = guestVoteCounts[s.id] || 0;
+      const score = nCnt + gCnt * guestWeight();
+      const nPct = Math.round(nCnt / maxScore * 100);
+      const gPct = Math.min(Math.round(gCnt * guestWeight() / maxScore * 100), 100 - nPct);
+      const card = document.createElement('div');
+      card.className = 'vote-card' + (voted ? ' voted' : '');
+      card.innerHTML = `
+        <div class="vc-top">
+          <span style="font-size:15px;line-height:1.4;word-break:break-all;flex:1;min-width:0">${escHtml(s.name)}</span>
+          ${voted ? '<span class="vc-voted-tag">✓ 已投票</span>' : `<span class="vc-count-tag">${score} 分</span>`}
+        </div>
+        ${buildSceneDisplayHtml(s, { prefix: 'vote', hideName: true })}
+        <div class="vc-score-row" style="margin-top:10px"><span>综合得分 ${score} 分</span>${gCnt > 0 ? `<span class="vc-guest-score">⭐ 嘉宾 +${gCnt * guestWeight()}</span>` : ''}</div>
+        <div class="vc-bar-dual"><div class="vc-bar-normal" style="width:${nPct}%"></div><div class="vc-bar-guest" style="left:${nPct}%;width:${gPct}%"></div></div>
+        ${curAct.status === 'voting' && !isArchived(curAct) ? `<div style="display:flex;gap:7px">
+          <button class="vc-btn" style="flex:1" ${canVote ? '' : 'disabled'} onclick="castVote(${s.id})">${voted ? '✓ 普通票已投' : canVote ? '投出一票 ✦' : '已投或票已用完'}</button>
+          ${isGuest ? `<button class="vc-btn" style="flex:1;background:${gVoted ? '#e8b84b' : canGuest ? 'linear-gradient(135deg,#c9890a,#e8b84b)' : '#e8e4dc'};color:#fff" ${canGuest ? '' : 'disabled'} onclick="castGuestVote(${s.id})">${gVoted ? '⭐ 嘉宾票已投' : '⭐ 嘉宾票 ×' + guestWeight()}</button>` : ''}
+        </div>` : ''}`;
+      sec.appendChild(card);
+    });
+    list.appendChild(sec);
+  }
+  api(`participants?activity_id=eq.${curAct.id}&select=voter_id`).then(d => {
+    document.getElementById('sv-participants').textContent = d.length;
+  }).catch(() => {});
+}
+async function castVote(id) {
+  if (isAdmin) { showToast('管理员不参与投票'); return; }
+  if (myVotes.includes(id) || myVotes.length >= votesPerPerson()) return;
+  myVotes.push(id);
+  voteCounts[id] = (voteCounts[id] || 0) + 1;
+  renderVoteList(); renderBoard();
+  votePending = true;
+  try {
+    await api('votes', 'POST', { scene_id: id, voter_id: VOTER_ID, activity_id: curAct.id }, 'return=minimal');
+    showToast('投票成功 ✦');
+  } catch (e) {
+    myVotes = myVotes.filter(v => v !== id);
+    voteCounts[id]--;
+    renderVoteList(); renderBoard();
+    showToast('投票失败：' + shortErr(e.message), 3200);
+  } finally { votePending = false; }
+}
+function openGuestModal() {
+  if (curAct.status !== 'voting') { showToast('请等待主持人开启投票阶段'); return; }
+  if (isGuest) { showToast('你已完成嘉宾身份验证'); return; }
+  document.getElementById('guest-modal-sub').textContent = `请输入嘉宾密码。验证成功后每位嘉宾享有 ${guestVotesMax()} 票，每票计 ${guestWeight()} 分。`;
+  document.getElementById('guest-err').style.display = 'none';
+  document.getElementById('guest-pwd-input').value = '';
+  document.getElementById('guest-modal').classList.add('open');
+  setTimeout(() => document.getElementById('guest-pwd-input').focus(), 200);
+}
+function closeGuestModal() { document.getElementById('guest-modal').classList.remove('open'); }
+function confirmGuestLogin() {
+  const pwd = document.getElementById('guest-pwd-input').value;
+  if (pwd === String(cfg(curAct, 'guest_password', 'guest2025'))) {
+    isGuest = true;
+    closeGuestModal();
+    renderVoteList();
+    showToast(`嘉宾身份验证成功！你有 ${guestVotesMax()} 票，每票计 ${guestWeight()} 分 ✦`);
+  } else document.getElementById('guest-err').style.display = 'block';
+}
+async function castGuestVote(id) {
+  if (!isGuest) return;
+  if (myGuestVotes.includes(id)) { showToast('已对该场景投过嘉宾票'); return; }
+  if (myGuestVotes.length >= guestVotesMax()) { showToast('嘉宾票已用完'); return; }
+  myGuestVotes.push(id);
+  guestVoteCounts[id] = (guestVoteCounts[id] || 0) + 1;
+  renderVoteList(); renderBoard();
+  guestVotePending = true;
+  try {
+    await api('votes', 'POST', { scene_id: id, voter_id: 'guest_' + VOTER_ID, activity_id: curAct.id }, 'return=minimal');
+    showToast(`嘉宾票投出成功 ✦ (+${guestWeight()}分)`);
+  } catch (e) {
+    myGuestVotes = myGuestVotes.filter(v => v !== id);
+    guestVoteCounts[id]--;
+    renderVoteList(); renderBoard();
+    showToast('嘉宾投票失败：' + shortErr(e.message), 3200);
+  } finally { guestVotePending = false; }
+}
+
+/* —— 榜单 —— */
+function renderBoard() {
+  const list = document.getElementById('board-list');
+  const valid = allScenes.filter(s => s.name.trim() !== '');
+  const total = valid.reduce((a, s) => a + scoreOf(s.id), 0);
+  document.getElementById('board-total').textContent = total.toLocaleString();
+  if (!valid.length) { list.innerHTML = '<p class="empty-hint">暂无数据</p>'; document.getElementById('winner-banner').style.display = 'none'; return; }
+  const gcount = groupCountOf(curAct);
+  const gScores = Array(gcount).fill(0);
+  valid.forEach(s => { if (s.group >= 0 && s.group < gcount) gScores[s.group] += scoreOf(s.id); });
+  const maxG = Math.max(...gScores, 0);
+  if (maxG > 0) {
+    document.getElementById('winner-name').textContent = groupLabel(gScores.indexOf(maxG)) + '（' + maxG + ' 分）';
+    document.getElementById('winner-banner').style.display = 'flex';
+  } else document.getElementById('winner-banner').style.display = 'none';
+  const expanded = new Set();
+  list.querySelectorAll('.sc-toggle.open').forEach(b => expanded.add(b.id.replace('-tog-', '-det-')));
+  const sorted = [...valid].sort((a, b) => scoreOf(b.id) - scoreOf(a.id));
+  const maxScore = Math.max(...sorted.map(s => scoreOf(s.id)), 1);
+  list.innerHTML = '';
+  sorted.forEach((s, idx) => {
+    const nCnt = voteCounts[s.id] || 0, gCnt = guestVoteCounts[s.id] || 0;
+    const score = nCnt + gCnt * guestWeight();
+    const isTop5 = idx < 5 && score > 0;
+    const nPct = Math.round(nCnt / maxScore * 100);
+    const gPct = Math.min(Math.round(gCnt * guestWeight() / maxScore * 100), 100 - nPct);
+    const key = 'top5_' + s.id;
+    const needAnim = isTop5 && !medalAnimated[key];
+    if (needAnim) medalAnimated[key] = true;
+    if (!isTop5 && medalAnimated[key]) delete medalAnimated[key];
+    const row = document.createElement('div');
+    row.className = 'board-row' + (isTop5 ? ' top5' : '');
+    row.innerHTML = `
+      <div class="br-header">
+        ${isTop5 ? `<span class="br-medal ${needAnim ? 'medal-pop' : ''} medal-shine" style="${needAnim ? 'animation-delay:' + (idx * .1) + 's' : ''}">${MEDALS[idx]}</span>` : `<span class="br-rank">${idx + 1}</span>`}
+        <div class="br-header-main">${escHtml(s.name)}</div>
+        <div class="br-header-right">
+          <span class="br-badge ${BADGE_CLS[s.group % BADGE_CLS.length]}">${groupLabel(s.group)}</span>
+          <div class="br-score-wrap"><span class="br-votes">${score}</span><span class="br-label">SCORE</span></div>
+        </div>
+      </div>
+      ${buildSceneDisplayHtml(s, { hideName: true, prefix: 'brd' })}
+      <div class="vc-bar-dual" style="margin:8px 0 4px"><div class="vc-bar-normal" style="width:${nPct}%"></div><div class="vc-bar-guest" style="left:${nPct}%;width:${gPct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px">
+        <span style="color:#4a3fd4">普通票 ${nCnt} 分</span>
+        ${gCnt > 0 ? `<span style="color:#c9890a">⭐ 嘉宾票 +${gCnt * guestWeight()} 分</span>` : '<span style="color:#ccc">暂无嘉宾票</span>'}
+      </div>`;
+    list.appendChild(row);
+    const det = 'brd-det-' + s.id, tog = 'brd-tog-' + s.id;
+    if (expanded.has(det)) {
+      const d = document.getElementById(det), b = document.getElementById(tog);
+      if (d) d.style.display = 'block';
+      if (b) { b.classList.add('open'); b.innerHTML = '收起 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 6.5l3-3 3 3"/></svg>'; }
+    }
+  });
+}
+
+/* ═══════════════ 民意调查模块（参与端）═══════════════ */
+async function enterSurvey() {
+  curView = 'survey';
+  svyEditingId = null;
+  await loadSurveyEntries(curAct.id);
+  if (!isArchived(curAct) && curAct.status === 'collecting') joinParticipants(curAct.id, 0);
+  routeSurvey();
+}
+function surveyReadonly() { return isArchived(curAct) || curAct.status === 'ended'; }
+function myEntries() { return svyEntries.filter(e => e.voter_id === VOTER_ID); }
+function maxEntriesOf() { return Math.max(1, parseInt(cfg(curAct, 'max_entries_per_person', 2), 10) || 2); }
+function routeSurvey() {
+  setNav(curAct.title, curAct, { back: true });
+  showScreen('screen-survey');
+  if (!isArchived(curAct) && curAct.status === 'waiting') {
+    document.getElementById('survey-waiting').style.display = 'flex';
+    document.getElementById('survey-main').style.display = 'none';
+    return;
+  }
+  document.getElementById('survey-waiting').style.display = 'none';
+  document.getElementById('survey-main').style.display = 'block';
+  document.getElementById('survey-title').textContent = curAct.title;
+  document.getElementById('survey-prompt').textContent = cfg(curAct, 'prompt_text', '') || (curAct.subtitle || '写下你的想法');
+  renderSurveyStats();
+  renderSurveyInput();
+  renderSurveyMine();
+  renderSurveySummary();
+}
+function svyKeywordFreq() {
+  const freq = {};
+  svyEntries.forEach(e => {
+    if (e.status === 'done' && Array.isArray(e.keywords)) e.keywords.forEach(k => { const t = String(k).trim(); if (t) freq[t] = (freq[t] || 0) + 1; });
+  });
+  return freq;
+}
+function renderSurveyStats() {
+  const voters = new Set(svyEntries.map(e => e.voter_id));
+  document.getElementById('svy-participants').textContent = voters.size;
+  document.getElementById('svy-entries').textContent = svyEntries.length;
+  document.getElementById('svy-quota').textContent = surveyReadonly() ? 0 : Math.max(0, maxEntriesOf() - myEntries().length);
+}
+function renderSurveyInput() {
+  const block = document.getElementById('survey-input-block');
+  const quota = maxEntriesOf() - myEntries().length;
+  if (surveyReadonly()) { block.style.display = 'none'; return; }
+  block.style.display = 'block';
+  const btn = document.getElementById('svy-submit-btn');
+  const tip = document.getElementById('svy-quota-tip');
+  if (quota <= 0) {
+    btn.disabled = true;
+    btn.textContent = '已达到填报上限';
+    tip.textContent = `每人最多提交 ${maxEntriesOf()} 条想法，可编辑已提交的内容`;
+  } else {
+    btn.disabled = !!svySubmitPending;
+    btn.textContent = svySubmitPending ? '正在提交…' : '提交想法 ✦';
+    tip.textContent = `还可提交 ${quota} 条 · 活动结束前均可修改`;
+  }
+}
+async function submitSurveyEntry() {
+  if (svySubmitPending) return;
+  if (surveyReadonly()) { showToast('本期填报已截止'); return; }
+  const ta = document.getElementById('svy-input');
+  const content = ta.value.trim();
+  if (!content) { showToast('先写点什么吧'); ta.focus(); return; }
+  if (content.length > 500) { showToast('内容过长，请控制在 500 字以内'); return; }
+  if (myEntries().length >= maxEntriesOf()) { showToast('已达到填报上限'); return; }
+  svySubmitPending = true; renderSurveyInput();
+  try {
+    const ins = await api('survey_entries?select=*', 'POST', { activity_id: curAct.id, voter_id: VOTER_ID, content, status: 'pending' });
+    if (ins[0]) { svyEntries.push(ins[0]); triggerExtract(ins[0].id); }
+    ta.value = ''; autoResize(ta);
+    joinParticipants(curAct.id, 0);
+    renderSurveyStats(); renderSurveyInput(); renderSurveyMine();
+    showToast('已提交，AI 正在提炼你的关键观点 ✦');
+  } catch (e) { showToast('提交失败：' + shortErr(e.message), 3600); }
+  finally { svySubmitPending = false; renderSurveyInput(); }
+}
+function entryStatusHtml(e) {
+  if (e.status === 'done' && Array.isArray(e.keywords) && e.keywords.length)
+    return '<span class="kw-ai-tag">AI 提炼</span>' + e.keywords.map(k => `<span class="kw-chip">${escHtml(k)}</span>`).join('');
+  if (e.status === 'failed')
+    return `<span class="kw-failed">提炼失败</span>${surveyReadonly() ? '' : `<button style="font-size:11px;color:#4a3fd4;background:none;border:none;cursor:pointer;text-decoration:underline" onclick="retryEntry(${e.id})">重试</button>`}`;
+  return '<span class="kw-pending">⚡ AI 提炼中…</span>';
+}
+function renderSurveyMine() {
+  const wrap = document.getElementById('survey-mine');
+  const mine = myEntries();
+  document.getElementById('svy-mine-title').style.display = mine.length ? 'flex' : 'none';
+  if (svyEditingId !== null) return; // 编辑中不重绘
+  if (!mine.length) { wrap.innerHTML = surveyReadonly() ? '<p class="empty-hint">你没有参与本期填报</p>' : ''; return; }
+  wrap.innerHTML = '';
+  mine.forEach((e, i) => {
+    const card = document.createElement('div');
+    card.className = 'entry-card';
+    card.id = 'entry-card-' + e.id;
+    card.innerHTML = `
+      <div class="entry-top">
+        <span class="entry-idx">想法 ${String(i + 1).padStart(2, '0')}</span>
+        ${surveyReadonly() ? '' : `<div class="scene-actions">
+          <button class="sa-btn" onclick="editEntry(${e.id})" title="编辑"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="sa-btn sa-del" onclick="deleteEntry(${e.id})" title="删除"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        </div>`}
+      </div>
+      <div class="entry-content">${escHtml(e.content)}</div>
+      <div class="entry-kws">${entryStatusHtml(e)}</div>`;
+    wrap.appendChild(card);
+  });
+}
+function editEntry(id) {
+  const e = svyEntries.find(x => x.id === id);
+  if (!e || surveyReadonly()) return;
+  svyEditingId = id;
+  const card = document.getElementById('entry-card-' + id);
+  card.classList.add('editing');
+  card.innerHTML = `
+    <div class="entry-top"><span class="entry-idx">编辑想法</span></div>
+    <div class="sf-box" style="margin-bottom:10px"><textarea class="sf-ta" id="entry-edit-ta" style="min-height:70px">${escHtml(e.content)}</textarea></div>
+    <div style="display:flex;gap:8px">
+      <button class="modal-cancel" style="flex:1" onclick="cancelEntryEdit()">取消</button>
+      <button class="modal-confirm" style="flex:2;background:#4a3fd4" onclick="saveEntryEdit(${id})">保存并重新提炼 ✦</button>
+    </div>`;
+  const ta = document.getElementById('entry-edit-ta');
+  autoResize(ta); ta.addEventListener('input', () => autoResize(ta)); ta.focus();
+}
+function cancelEntryEdit() { svyEditingId = null; renderSurveyMine(); }
+async function saveEntryEdit(id) {
+  const ta = document.getElementById('entry-edit-ta');
+  const content = (ta?.value || '').trim();
+  if (!content) { showToast('内容不能为空'); return; }
+  if (content.length > 500) { showToast('内容过长，请控制在 500 字以内'); return; }
+  try {
+    await api(`survey_entries?id=eq.${id}`, 'PATCH', { content, keywords: null, status: 'pending' });
+    const e = svyEntries.find(x => x.id === id);
+    if (e) { e.content = content; e.keywords = null; e.status = 'pending'; e.updated_at = new Date().toISOString(); }
+    svyEditingId = null;
+    triggerExtract(id);
+    renderSurveyMine();
+    showToast('已更新，AI 正在重新提炼 ✦');
+  } catch (e2) { showToast('保存失败：' + shortErr(e2.message) + '（填报可能已截止）', 3600); svyEditingId = null; renderSurveyMine(); }
+}
+async function deleteEntry(id) {
+  if (!window.confirm('确认删除这条想法？删除后名额可重新使用。')) return;
+  try {
+    await api(`survey_entries?id=eq.${id}`, 'DELETE');
+    svyEntries = svyEntries.filter(x => x.id !== id);
+    svyEditingId = null;
+    renderSurveyStats(); renderSurveyInput(); renderSurveyMine();
+  } catch (e) { showToast('删除失败：' + shortErr(e.message), 3200); }
+}
+function retryEntry(id) {
+  const e = svyEntries.find(x => x.id === id);
+  if (e) { e.status = 'pending'; renderSurveyMine(); }
+  triggerExtract(id, true);
+}
+function renderSurveySummary() {
+  const box = document.getElementById('survey-summary');
+  if (!surveyReadonly()) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const freq = svyKeywordFreq();
+  const items = Object.entries(freq).map(([text, weight]) => ({ text, weight })).sort((a, b) => b.weight - a.weight);
+  drawWordCloud(document.getElementById('svy-cloud'), items, { palette: CLOUD_LIGHT, minFont: 13, maxFont: 40 });
+  const top = items.slice(0, 10);
+  const maxW = top.length ? top[0].weight : 1;
+  document.getElementById('svy-topkw').innerHTML = top.length
+    ? top.map((it, i) => `<div class="top-kw-row"><span class="top-kw-rank">${i + 1}</span><span class="top-kw-name">${escHtml(it.text)}</span><div class="top-kw-bar"><div class="top-kw-fill" style="width:${Math.round(it.weight / maxW * 100)}%"></div></div><span class="top-kw-cnt">×${it.weight}</span></div>`).join('')
+    : '<p class="empty-hint">暂无提炼结果</p>';
+}
+
+/* —— AI 提炼触发与兜底 —— */
+async function triggerExtract(entryId, force) {
+  const last = extractTriggered[entryId] || 0;
+  if (!force && Date.now() - last < 25000) return;
+  extractTriggered[entryId] = Date.now();
+  try {
+    await fetch(FN_AI, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      body: JSON.stringify({ task_key: 'survey_extract', entry_id: entryId }),
+    });
+  } catch (_) {}
+}
+const extractAttempts = {};   // entry_id -> 自动重试次数（防死循环，上限 3 次）
+function sweepPendingEntries() {
+  svyEntries.filter(e => e.status === 'pending' || e.status === 'failed').forEach(e => {
+    const age = Date.now() - new Date(e.updated_at || e.created_at).getTime();
+    const n = extractAttempts[e.id] || 0;
+    if (age > 30000 && n < 3) { extractAttempts[e.id] = n + 1; triggerExtract(e.id, e.status === 'failed'); }
+  });
+}
+
+/* ═══════════════ 词云渲染（自研 canvas 渲染器，零外部依赖）═══════════════ */
+function drawWordCloud(canvas, items, opts) {
+  if (!canvas) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cssW = canvas.clientWidth || canvas.offsetWidth || 600;
+  const cssH = canvas.clientHeight || canvas.offsetHeight || 320;
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+  canvas._words = [];
+  bindCloudTooltip(canvas);
+  if (!items || !items.length) {
+    ctx.font = '13px sans-serif'; ctx.fillStyle = opts.emptyColor || '#999';
+    ctx.textAlign = 'center'; ctx.fillText('等待第一条想法被提炼…', cssW / 2, cssH / 2);
+    return;
+  }
+  // 只取热度前 40，保持聚焦；字号随次数拉开差距（0.55 次幂放大对比）
+  const top = items.slice(0, 40);
+  const maxW = top[0].weight, minW = top[top.length - 1].weight;
+  const placed = [];
+  const cx = cssW / 2, cy = cssH / 2;
+  ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+  top.forEach((it, i) => {
+    const t = maxW === minW ? .55 : (it.weight - minW) / (maxW - minW);
+    const fs = Math.round(opts.minFont + (opts.maxFont - opts.minFont) * Math.pow(t, .55));
+    ctx.font = `700 ${fs}px 'PingFang SC','Microsoft YaHei',sans-serif`;
+    const tw = ctx.measureText(it.text).width, th = fs * 1.18;
+    for (let a = i * .9, r = 0; r < Math.max(cssW, cssH) * .72; a += .3, r = 2.2 * a) {
+      const x = cx + r * Math.cos(a) - tw / 2;
+      const y = cy + r * Math.sin(a) * .58 - th / 2;
+      if (x < 2 || y < 2 || x + tw > cssW - 2 || y + th > cssH - 2) continue;
+      const rect = { x: x - 5, y: y - 3, w: tw + 10, h: th + 6 };
+      const hit = placed.some(p => !(rect.x + rect.w < p.x || p.x + p.w < rect.x || rect.y + rect.h < p.y || p.y + p.h < rect.y));
+      if (!hit) {
+        placed.push(rect);
+        ctx.fillStyle = opts.palette[i % opts.palette.length];
+        if (opts.glow) { ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 14; }
+        ctx.fillText(it.text, x, y);
+        ctx.shadowBlur = 0;
+        canvas._words.push({ x, y, w: tw, h: th, text: it.text, weight: it.weight });
+        break;
+      }
+    }
+  });
+}
+function bindCloudTooltip(canvas) {
+  if (canvas._tipBound) return;
+  canvas._tipBound = true;
+  const tip = document.createElement('div');
+  tip.style.cssText = 'position:fixed;z-index:999;padding:5px 12px;border-radius:9px;font-size:12px;font-weight:700;pointer-events:none;display:none;background:#1a1a2e;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.35);white-space:nowrap';
+  document.body.appendChild(tip);
+  canvas.addEventListener('mousemove', ev => {
+    const r = canvas.getBoundingClientRect();
+    const x = ev.clientX - r.left, y = ev.clientY - r.top;
+    const hit = (canvas._words || []).find(w => x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h);
+    if (hit) {
+      tip.textContent = hit.text + ' · 被提及 ' + hit.weight + ' 次';
+      tip.style.display = 'block';
+      tip.style.left = Math.min(ev.clientX + 14, window.innerWidth - 160) + 'px';
+      tip.style.top = (ev.clientY + 14) + 'px';
+      canvas.style.cursor = 'pointer';
+    } else { tip.style.display = 'none'; canvas.style.cursor = 'default'; }
+  });
+  canvas.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+}
+
+/* ═══════════════ 投屏模式（PC 大屏）═══════════════ */
+let projActId = null, prevPjIds = new Set();
+function enterProjection(actId) {
+  projActId = actId || (curAct && curAct.id);
+  if (!projActId) return;
+  curView = 'projection';
+  prevPjIds = new Set();
+  document.getElementById('screen-projection').classList.add('active');
+  renderProjection(true);
+}
+function leaveProjection() {
+  document.getElementById('screen-projection').classList.remove('active');
+  projActId = null;
+  curView = isAdmin ? 'admin' : 'lobby';
+  if (curView === 'lobby') goLobby();
+}
+async function renderProjection(reload) {
+  const act = allActivities.find(a => a.id === projActId);
+  if (!act) return;
+  if (reload) { curAct = act; await loadSurveyEntries(act.id); }
+  document.getElementById('pj-title').textContent = act.title;
+  document.getElementById('pj-sub').textContent = cfg(act, 'prompt_text', act.subtitle || '');
+  const voters = new Set(svyEntries.map(e => e.voter_id));
+  document.getElementById('pj-participants').textContent = voters.size;
+  document.getElementById('pj-entries').textContent = svyEntries.length;
+  const freq = {};
+  svyEntries.forEach(e => { if (e.status === 'done' && Array.isArray(e.keywords)) e.keywords.forEach(k => { const t = String(k).trim(); if (t) freq[t] = (freq[t] || 0) + 1; }); });
+  const items = Object.entries(freq).map(([text, weight]) => ({ text, weight })).sort((a, b) => b.weight - a.weight);
+  document.getElementById('pj-kwcount').textContent = items.length;
+  const todoCnt = svyEntries.filter(e => e.status !== 'done').length;
+  const finalized = !!cfg(act, 'final_keywords', null);
+  const rbtn = document.getElementById('pj-retry-btn');
+  if (rbtn) {
+    rbtn.style.display = (!isArchived(act) && !finalized) ? 'block' : 'none';
+    const canRetry = todoCnt > 0;
+    rbtn.disabled = !canRetry;
+    rbtn.style.opacity = canRetry ? '1' : '.4';
+    rbtn.style.cursor = canRetry ? 'pointer' : 'not-allowed';
+    rbtn.textContent = canRetry ? ('⟳ 批量重试失败 (' + todoCnt + ')') : '⟳ 重试（无待处理条目）';
+  }
+  const sbtn = document.getElementById('pj-stats-btn');
+  if (sbtn) {
+    sbtn.style.display = !isArchived(act) ? 'block' : 'none';
+    const canStat = act.status === 'ended';
+    sbtn.disabled = !canStat;
+    sbtn.style.opacity = canStat ? '1' : '.45';
+    sbtn.style.cursor = canStat ? 'pointer' : 'not-allowed';
+    sbtn.textContent = canStat ? (finalized ? '✦ 重新统计' : '✦ 一键统计') : '✦ 一键统计（需先结束填报）';
+  }
+  const liveEl = document.getElementById('pj-live');
+  if (liveEl) liveEl.innerHTML = finalized
+    ? '<span class="pj-live-dot" style="background:#e8b84b"></span><span style="color:#e8b84b">已定稿 · FINAL</span>'
+    : '<span class="pj-live-dot"></span>LIVE';
+  drawWordCloud(document.getElementById('pj-cloud'), items, { palette: CLOUD_DARK, minFont: 15, maxFont: 64, glow: true, emptyColor: '#565873' });
+  const top = items.slice(0, 10);
+  const maxW = top.length ? top[0].weight : 1;
+  document.getElementById('pj-top').innerHTML = top.length
+    ? top.map((it, i) => `<div class="pj-top-row"><span class="pj-top-rank">${i + 1}</span><span class="pj-top-name">${escHtml(it.text)}</span><span class="pj-top-cnt">×${it.weight}</span></div>`).join('')
+    : '<div style="font-size:12px;color:#565873">暂无数据</div>';
+  // 左栏：AI 提炼流（最近 8 条，按更新时间倒序）
+  const feed = [...svyEntries].sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)).slice(0, 8);
+  const feedEl = document.getElementById('pj-feed');
+  feedEl.innerHTML = feed.map(e => {
+    const fresh = !prevPjIds.has(e.id + '|' + e.status);
+    const snippet = e.content.length > 46 ? e.content.slice(0, 46) + '…' : e.content;
+    let statusHtml;
+    if (e.status === 'done' && Array.isArray(e.keywords) && e.keywords.length)
+      statusHtml = '<div class="pj-feed-kws">' + e.keywords.map(k => `<span class="pj-chip">${escHtml(k)}</span>`).join('') + '</div>';
+    else if (e.status === 'failed') statusHtml = '<span class="pj-failed">✕ 提炼失败，等待重试</span>';
+    else statusHtml = '<span class="pj-scanning"><span class="pj-scan-dot"></span>AI 提炼中…</span>';
+    return `<div class="pj-feed-item" style="${fresh ? '' : 'animation:none'}"><div class="pj-feed-text">"${escHtml(snippet)}"</div>${statusHtml}</div>`;
+  }).join('') || '<div style="font-size:12px;color:#565873">等待第一条想法…</div>';
+  prevPjIds = new Set(svyEntries.map(e => e.id + '|' + e.status));
+  if (!isArchived(act) && !finalized) sweepPendingEntries();
+}
+
+/* ═══════════════ 管理后台 ═══════════════ */
+function toggleAdmin() {
+  if (curView === 'admin') { goLobby(); return; }
+  if (isAdmin) { enterAdmin(); return; }
+  curView = 'admin-login';
+  setNav('管理后台', null, { back: true });
+  document.getElementById('admin-pwd-input').value = '';
+  document.getElementById('admin-err').style.display = 'none';
+  showScreen('screen-admin-login');
+  setTimeout(() => document.getElementById('admin-pwd-input').focus(), 150);
+}
+function adminLogin() {
+  if (document.getElementById('admin-pwd-input').value === ADMIN_PASSWORD) { isAdmin = true; enterAdmin(); }
+  else document.getElementById('admin-err').style.display = 'block';
+}
+function adminLogout() { isAdmin = false; goLobby(); }
+function enterAdmin() {
+  curView = 'admin';
+  setNav('管理后台', null, { back: true });
+  adminFormsBuilt = { ideas: false, survey: false, ai: false };
+  showScreen('screen-admin');
+  switchAdminTab(adminTab);
+}
+function switchAdminTab(tab) {
+  adminTab = tab;
+  ['ideas','survey','ai'].forEach(t => document.getElementById('atab-' + t).classList.toggle('active', t === tab));
+  buildAdminTab(tab);
+}
+async function buildAdminTab(tab) {
+  const body = document.getElementById('admin-body');
+  if (tab === 'ideas') { await buildAdminIdeas(body); }
+  else if (tab === 'survey') { await buildAdminSurvey(body); }
+  else { await buildAdminAI(body); }
+}
+function phaseBtn(label, cls, onclick, disabled) {
+  return `<button class="phase-btn ${cls || ''}" ${disabled ? 'disabled' : ''} onclick="${onclick}">${label}</button>`;
+}
+function archiveNoticeHtml(act) {
+  return `<div class="admin-section span2" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div><span class="arch-lock">🔒 无进行中的${act === 'ideas' ? '思路征集' : '民意调查'}活动</span>
+    <span style="font-size:12px;color:#aaa;margin-left:8px">往期数据已封板保留，可在大厅查看</span></div>
+    ${phaseBtn('+ 创建新一期活动', 'primary', `createActivityPrompt('${act}')`)}
+  </div>`;
+}
+
+/* —— 思路征集管理 —— */
+async function buildAdminIdeas(body) {
+  const act = liveAct('ideas');
+  if (!act) { body.innerHTML = archiveNoticeHtml('ideas'); return; }
+  await Promise.all([loadScenes(act.id), loadVotes(act.id)]);
+  const parts = await api(`participants?activity_id=eq.${act.id}&select=voter_id`).catch(() => []);
+  const totalVotes = Object.values(voteCounts).reduce((a,b)=>a+b,0) + Object.values(guestVoteCounts).reduce((a,b)=>a+b,0);
+  const gcount = groupCountOf(act), maxS = maxScenesOf(act);
+  const [stText] = statusMeta(act);
+  let progress = '';
+  for (let i = 0; i < gcount; i++) {
+    const c = allScenes.filter(s => s.group === i && s.name.trim() !== '').length;
+    progress += `<div class="pg-row"><span class="pg-label">${groupLabel(i)}</span><div class="pg-track"><div class="pg-fill" style="width:${Math.min(100, c / maxS * 100)}%"></div></div><span class="pg-count">${c}/${maxS}</span></div>`;
+  }
+  body.innerHTML = `
+    <div class="admin-section span2">
+      <div class="as-title"><span>本期活动 · <span style="color:#4a3fd4">${escHtml(act.title)}</span></span><span class="nav-status ns-${act.status}">${stText}</span></div>
+      <div class="phase-btns">
+        ${phaseBtn('① 等待', act.status === 'waiting' ? 'primary' : '', `setActStatus(${act.id},'waiting')`)}
+        ${phaseBtn('② 开启录入', act.status === 'submitting' ? 'primary' : '', `setActStatus(${act.id},'submitting')`)}
+        ${phaseBtn('③ 开启投票', act.status === 'voting' ? 'primary' : '', `setActStatus(${act.id},'voting')`)}
+        ${phaseBtn('④ 结束活动', act.status === 'ended' ? 'primary' : 'danger', `setActStatus(${act.id},'ended')`)}
+      </div>
+    </div>
+    <div class="admin-section">
+      <div class="as-title">活动信息与规则 <span style="font-size:11px;color:#bbb;font-weight:400">修改后点保存实时生效</span></div>
+      <label class="af-label">活动主题</label><input class="af-input" id="ai-title" value="${escHtml(act.title)}">
+      <label class="af-label">副标题 / 描述</label><input class="af-input" id="ai-subtitle" value="${escHtml(act.subtitle || '')}">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label class="af-label">小组数量</label><input class="af-input" type="number" min="1" max="20" id="ai-gcount" value="${gcount}"></div>
+        <div><label class="af-label">每组场景上限</label><input class="af-input" type="number" min="1" max="50" id="ai-maxs" value="${maxS}"></div>
+        <div><label class="af-label">每人票数</label><input class="af-input" type="number" min="1" max="10" id="ai-vpp" value="${cfg(act,'votes_per_person',3)}"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label class="af-label">嘉宾票数</label><input class="af-input" type="number" min="1" max="10" id="ai-gv" value="${cfg(act,'guest_votes',3)}"></div>
+        <div><label class="af-label">嘉宾票权重</label><input class="af-input" type="number" min="1" max="10" id="ai-gw" value="${cfg(act,'guest_weight',2)}"></div>
+        <div><label class="af-label">嘉宾密码</label><input class="af-input" id="ai-gpwd" value="${escHtml(cfg(act,'guest_password','guest2025'))}"></div>
+      </div>
+      <div class="phase-btns" style="margin-top:14px">${phaseBtn('保存修改', 'primary', `saveIdeasConfig(${act.id})`)}</div>
+    </div>
+    <div class="admin-section">
+      <div class="as-title">实时数据</div>
+      <div class="as-row"><span class="as-label">参与人数</span><span class="as-value">${parts.length}</span></div>
+      <div class="as-row"><span class="as-label">场景总数</span><span class="as-value">${allScenes.filter(s=>s.name.trim()!=='').length}</span></div>
+      <div class="as-row"><span class="as-label">累计得分</span><span class="as-value">${Object.values(voteCounts).reduce((a,b)=>a+b,0) + Object.values(guestVoteCounts).reduce((a,b)=>a+b,0) * (parseInt(cfg(act,'guest_weight',2),10)||2)}</span></div>
+      <div class="as-row"><span class="as-label">总票数</span><span class="as-value">${totalVotes}</span></div>
+      <div class="as-title" style="margin-top:16px">各组填写进度</div>
+      <div class="progress-bars">${progress}</div>
+    </div>
+    <div class="admin-section span2">
+      <div class="as-title">数据操作</div>
+      <div class="phase-btns">
+        ${phaseBtn('刷新数据', '', `buildAdminTab('ideas')`)}
+        ${phaseBtn('导出 Top 榜单（打印 / 存 PDF）', 'gold', `printIdeasResults(${act.id})`)}
+        ${phaseBtn('清空全部投票', 'danger', `resetVotes(${act.id})`)}
+        ${phaseBtn('🗑 一键清空本期数据', 'danger', `clearIdeasData(${act.id})`)}
+        ${phaseBtn('🔒 封板本期活动', 'danger', `archiveActivity(${act.id})`)}
+      </div>
+      <div class="ai-hint">封板后本期所有数据永久只读，之后才能创建新一期活动。导出会打开打印视图，在打印对话框中选择"另存为 PDF"即可。</div>
+    </div>`;
+}
+async function saveIdeasConfig(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  const title = document.getElementById('ai-title').value.trim();
+  if (!title) { showToast('主题不能为空'); return; }
+  const config = Object.assign({}, act.config, {
+    group_count: Math.min(20, Math.max(1, parseInt(document.getElementById('ai-gcount').value, 10) || 4)),
+    max_scenes_per_group: Math.min(50, Math.max(1, parseInt(document.getElementById('ai-maxs').value, 10) || 5)),
+    votes_per_person: Math.min(10, Math.max(1, parseInt(document.getElementById('ai-vpp').value, 10) || 3)),
+    guest_votes: Math.min(10, Math.max(1, parseInt(document.getElementById('ai-gv').value, 10) || 3)),
+    guest_weight: Math.min(10, Math.max(1, parseInt(document.getElementById('ai-gw').value, 10) || 2)),
+    guest_password: document.getElementById('ai-gpwd').value.trim() || 'guest2025',
+  });
+  try {
+    await api(`activities?id=eq.${actId}`, 'PATCH', { title, subtitle: document.getElementById('ai-subtitle').value.trim(), config });
+    await loadActivities();
+    showToast('已保存，全端实时生效 ✓');
+    buildAdminTab('ideas');
+  } catch (e) { showToast('保存失败：' + shortErr(e.message), 3600); }
+}
+async function resetVotes(actId) {
+  if (!window.confirm('确认清空本期全部投票？此操作不可恢复！')) return;
+  try {
+    await api(`votes?activity_id=eq.${actId}`, 'DELETE');
+    showToast('投票已清空');
+    buildAdminTab('ideas');
+  } catch (e) { showToast('操作失败：' + shortErr(e.message), 3200); }
+}
+
+/* —— 民意调查管理 —— */
+async function buildAdminSurvey(body) {
+  const act = liveAct('survey');
+  if (!act) { body.innerHTML = archiveNoticeHtml('survey'); return; }
+  await loadSurveyEntries(act.id);
+  const voters = new Set(svyEntries.map(e => e.voter_id));
+  const pending = svyEntries.filter(e => e.status === 'pending').length;
+  const failed = svyEntries.filter(e => e.status === 'failed').length;
+  const [stText] = statusMeta(act);
+  body.innerHTML = `
+    <div class="admin-section span2">
+      <div class="as-title"><span>本期活动 · <span style="color:#1a8a6e">${escHtml(act.title)}</span></span><span class="nav-status ns-${act.status}">${stText}</span></div>
+      <div class="phase-btns">
+        ${phaseBtn('① 等待', act.status === 'waiting' ? 'primary' : '', `setActStatus(${act.id},'waiting')`)}
+        ${phaseBtn('② 开启填报', act.status === 'collecting' ? 'primary' : '', `setActStatus(${act.id},'collecting')`)}
+        ${phaseBtn('③ 结束填报', act.status === 'ended' ? 'primary' : 'danger', `endSurveyCollecting(${act.id})`)}
+        ${phaseBtn('📺 打开投屏模式', 'gold', `enterProjection(${act.id})`)}
+      </div>
+      <div class="ai-hint">结束填报的瞬间，数据库将拒绝一切迟到的提交与修改（原子截止），并自动补提炼未完成的条目。投屏模式建议在投影屏的浏览器中打开本页并从后台进入。</div>
+    </div>
+    <div class="admin-section">
+      <div class="as-title">活动信息与规则</div>
+      <label class="af-label">活动主题</label><input class="af-input" id="as-title-in" value="${escHtml(act.title)}">
+      <label class="af-label">副标题 / 描述</label><input class="af-input" id="as-subtitle-in" value="${escHtml(act.subtitle || '')}">
+      <label class="af-label">填报提示语（参与者进入时看到的引导文字）</label>
+      <textarea class="af-ta" id="as-prompt-in" rows="3">${escHtml(cfg(act,'prompt_text',''))}</textarea>
+      <label class="af-label">每人可提交条数</label><input class="af-input af-num" type="number" min="1" max="10" id="as-maxe-in" value="${cfg(act,'max_entries_per_person',2)}">
+      <div class="phase-btns" style="margin-top:14px">${phaseBtn('保存修改', 'primary', `saveSurveyConfig(${act.id})`)}</div>
+    </div>
+    <div class="admin-section">
+      <div class="as-title">实时数据</div>
+      <div class="as-row"><span class="as-label">参与人数</span><span class="as-value">${voters.size}</span></div>
+      <div class="as-row"><span class="as-label">想法总数</span><span class="as-value">${svyEntries.length}</span></div>
+      <div class="as-row"><span class="as-label">已完成提炼</span><span class="as-value" style="color:#1a8a6e">${svyEntries.filter(e=>e.status==='done').length}</span></div>
+      <div class="as-row"><span class="as-label">提炼中</span><span class="as-value" style="color:#b7770d">${pending}</span></div>
+      <div class="as-row"><span class="as-label">提炼失败</span><span class="as-value" style="color:#c0392b">${failed}</span></div>
+      <div class="phase-btns" style="margin-top:8px">
+        ${phaseBtn('刷新数据', '', `buildAdminTab('survey')`)}
+      </div>
+      <div class="ai-hint">批量重试与「✦ 一键统计」请在投屏模式中操作：投屏页右上角会按需出现「⟳ 批量重试失败」，结束填报后出现金色「✦ 一键统计」。</div>
+    </div>
+    <div class="admin-section span2">
+      <div class="as-title">数据操作</div>
+      <div class="phase-btns">
+        ${phaseBtn('导出调查结果（打印 / 存 PDF）', 'gold', `printSurveyResults(${act.id})`)}
+        ${phaseBtn('🗑 一键清空本期数据', 'danger', `clearSurveyData(${act.id})`)}
+        ${phaseBtn('🔒 封板本期活动', 'danger', `archiveActivity(${act.id})`)}
+      </div>
+      <div class="ai-hint">推荐流程：后台「结束填报」→ 投屏页点「✦ 一键统计」定稿词云。「一键清空」将删除本期全部想法、提炼结果与参与记录（不含活动配置），不可恢复，仅用于测试或重新开始。</div>
+    </div>`;
+}
+async function saveSurveyConfig(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  const title = document.getElementById('as-title-in').value.trim();
+  if (!title) { showToast('主题不能为空'); return; }
+  const config = Object.assign({}, act.config, {
+    prompt_text: document.getElementById('as-prompt-in').value.trim(),
+    max_entries_per_person: Math.min(10, Math.max(1, parseInt(document.getElementById('as-maxe-in').value, 10) || 2)),
+  });
+  try {
+    await api(`activities?id=eq.${actId}`, 'PATCH', { title, subtitle: document.getElementById('as-subtitle-in').value.trim(), config });
+    await loadActivities();
+    showToast('已保存，全端实时生效 ✓');
+    buildAdminTab('survey');
+  } catch (e) { showToast('保存失败：' + shortErr(e.message), 3600); }
+}
+async function endSurveyCollecting(actId) {
+  if (!window.confirm('确认结束本期填报？\n结束后所有提交与修改将被数据库立即拒绝，未提炼的条目会自动补提炼。')) return;
+  try {
+    await api(`activities?id=eq.${actId}`, 'PATCH', { status: 'ended' });
+    await loadActivities();
+    showToast('填报已截止，正在终局补提炼…', 3000);
+    const rows = await api(`survey_entries?activity_id=eq.${actId}&select=*`);
+    const todo = rows.filter(r => r.status !== 'done');
+    for (let i = 0; i < todo.length; i += 5) {
+      await Promise.all(todo.slice(i, i + 5).map(r => triggerExtract(r.id, true)));
+    }
+    buildAdminTab('survey');
+    if (todo.length) { showToast(`已触发 ${todo.length} 条终局补提炼，面板将自动刷新`, 3200); watchExtractProgress(actId); }
+    else showToast('全部条目提炼完成，数据可封板 ✓', 3200);
+  } catch (e) { showToast('操作失败：' + shortErr(e.message), 3600); }
+}
+async function pjRetryFailed() {
+  const todo = svyEntries.filter(e => e.status !== 'done');
+  if (!todo.length) { showToast('没有待处理条目'); return; }
+  const btn = document.getElementById('pj-retry-btn');
+  if (btn) btn.textContent = '⟳ 重试中…';
+  showToast(`正在批量重试 ${todo.length} 条，结果将实时刷新…`, 3000);
+  for (let i = 0; i < todo.length; i += 5) {
+    await Promise.all(todo.slice(i, i + 5).map(r => triggerExtract(r.id, true)));
+  }
+}
+let retryWatchTimer = null;
+function watchExtractProgress(actId) {
+  // 轮询刷新面板，直到全部提炼完成或超时（60s）
+  clearInterval(retryWatchTimer);
+  const deadline = Date.now() + 60000;
+  retryWatchTimer = setInterval(async () => {
+    try {
+      const fresh = await api(`survey_entries?activity_id=eq.${actId}&select=id,status`);
+      const left = fresh.filter(r => r.status !== 'done').length;
+      if (adminTab === 'survey' && curView === 'admin') buildAdminTab('survey');
+      if (left === 0) { clearInterval(retryWatchTimer); showToast('全部条目提炼完成 ✓'); }
+      else if (Date.now() > deadline) { clearInterval(retryWatchTimer); showToast(`仍有 ${left} 条未完成，可稍后再次点击重试`, 4000); }
+    } catch (_) { clearInterval(retryWatchTimer); }
+  }, 4000);
+}
+async function confirmDanger(msg) {
+  if (!window.confirm(msg)) return false;
+  const word = window.prompt('高危操作二次确认：请输入「清空」两个字后点击确定：');
+  if (word !== '清空') { showToast('已取消'); return false; }
+  return true;
+}
+async function clearSurveyData(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  const ok = await confirmDanger(`确认清空「${act.title}」的全部数据？\n将删除本期所有想法、AI 提炼结果与参与记录。\n此操作不可恢复！`);
+  if (!ok) return;
+  try {
+    await api(`survey_entries?activity_id=eq.${actId}`, 'DELETE');
+    await api(`participants?activity_id=eq.${actId}`, 'DELETE');
+    const cfgNew = Object.assign({}, act.config || {});
+    delete cfgNew.final_keywords; delete cfgNew.summarized_at;   // 同步清除定稿标记
+    await api(`activities?id=eq.${actId}`, 'PATCH', { config: cfgNew });
+    await loadActivities();
+    showToast('本期数据已清空 ✓');
+    buildAdminTab('survey');
+  } catch (e) { showToast('清空失败：' + shortErr(e.message) + '（若提示权限不足，请先执行 RLS 更新 SQL）', 5200); }
+}
+async function clearIdeasData(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  const ok = await confirmDanger(`确认清空「${act.title}」的全部数据？\n将删除本期所有场景、投票与参与记录。\n此操作不可恢复！`);
+  if (!ok) return;
+  try {
+    await api(`votes?activity_id=eq.${actId}`, 'DELETE');
+    await api(`scenes?activity_id=eq.${actId}`, 'DELETE');
+    await api(`participants?activity_id=eq.${actId}`, 'DELETE');
+    await loadActivities();
+    showToast('本期数据已清空 ✓');
+    buildAdminTab('ideas');
+  } catch (e) { showToast('清空失败：' + shortErr(e.message), 5200); }
+}
+
+let summarizing = false;
+async function callSummarize(actId) {
+  const res = await fetch(FN_AI, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }, body: JSON.stringify({ task_key: 'survey_summarize', activity_id: actId }) });
+  return await res.json();
+}
+function summarizeConfirmText(redo) {
+  return redo
+    ? '重新统计将再次通读全部想法、重新归纳关键词体系并覆盖当前结果。\n确认继续？'
+    : 'AI 将通读全部想法，归纳出核心关键词体系（上限见 AI 配置），并覆盖各条目的实时提炼结果。\n统计完成后词云定稿，不再进行实时提炼。\n确认开始？';
+}
+/* 投屏页：一键统计（带仪式感动画） */
+async function runSummarize() {
+  if (summarizing) return;
+  const act = allActivities.find(a => a.id === projActId);
+  if (!act) return;
+  if (act.status !== 'ended') { showToast('请先在管理后台点击「结束填报」'); return; }
+  const redo = !!cfg(act, 'final_keywords', null);
+  if (!window.confirm(summarizeConfirmText(redo))) return;
+  summarizing = true;
+  const ov = document.getElementById('pj-summarize-ov');
+  document.getElementById('pj-sum-text').textContent = `AI 正在通读全部 ${svyEntries.length} 条想法…`;
+  ov.style.display = 'flex';
+  try {
+    const j = await callSummarize(projActId);
+    if (j.ok) {
+      await loadActivities();
+      await loadSurveyEntries(projActId);
+      ov.style.display = 'none';
+      renderProjection(false);
+      showToast(`统计完成：归纳出 ${(j.final || []).length} 个核心关键词，覆盖 ${(j.updated || 0) + (j.assigned || 0)} 条填报 ✓`, 5000);
+    } else { ov.style.display = 'none'; showToast('统计失败：' + (j.error || ''), 4600); }
+  } catch (e) { ov.style.display = 'none'; showToast('请求失败：' + shortErr(e.message), 4200); }
+  finally { summarizing = false; }
+}
+/* —— 通用：状态切换 / 封板 / 新建 —— */
+async function setActStatus(actId, status) {
+  const labels = { waiting:'等待', submitting:'录入', voting:'投票', collecting:'填报', ended:'结束' };
+  if (status === 'ended' && !window.confirm('确认结束本期活动？结束后参与者只能查看结果。')) return;
+  try {
+    await api(`activities?id=eq.${actId}`, 'PATCH', { status });
+    await loadActivities();
+    showToast(`已切换到「${labels[status]}」阶段`);
+    buildAdminTab(adminTab);
+  } catch (e) { showToast('切换失败：' + shortErr(e.message), 3200); }
+}
+async function archiveActivity(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  if (!window.confirm(`确认封板「${act.title}」？\n\n封板后：\n· 本期全部数据永久只读（数据库级保护）\n· 活动移入大厅"往期活动"区\n· 之后才能创建新一期同类活动\n\n此操作不可在页面上撤销！`)) return;
+  if (!window.confirm('再次确认：立即封板？')) return;
+  try {
+    await api(`activities?id=eq.${actId}`, 'PATCH', { status: 'ended', archived_at: new Date().toISOString() });
+    await loadActivities();
+    showToast('已封板归档 🔒');
+    buildAdminTab(adminTab);
+  } catch (e) { showToast('封板失败：' + shortErr(e.message), 3600); }
+}
+async function createActivityPrompt(type) {
+  const name = type === 'ideas' ? '思路征集' : '民意调查';
+  const title = window.prompt(`创建新一期「${name}」活动\n\n请输入活动主题：`);
+  if (!title || !title.trim()) return;
+  const subtitle = window.prompt('请输入副标题 / 描述（可留空）：') || '';
+  const config = type === 'ideas'
+    ? { votes_per_person: 3, group_count: 4, max_scenes_per_group: 5, guest_votes: 3, guest_weight: 2, guest_password: 'guest2025' }
+    : { prompt_text: '', max_entries_per_person: 2 };
+  try {
+    await api('activities', 'POST', { type, title: title.trim(), subtitle: subtitle.trim(), config, status: 'waiting' });
+    await loadActivities();
+    showToast('新一期活动已创建，处于「等待」状态');
+    buildAdminTab(adminTab);
+  } catch (e) {
+    showToast('创建失败：' + (shortErr(e.message).includes('uniq_live') ? '存在未封板的同类活动，请先封板' : shortErr(e.message)), 4200);
+  }
+}
+
+/* —— AI 配置管理 —— */
+async function buildAdminAI(body) {
+  body.innerHTML = '<div class="admin-section span2"><p class="empty-hint">加载 AI 配置中…</p></div>';
+  try {
+    const [cfgs, prompts] = await Promise.all([api('ai_config?select=*&order=id.asc&limit=1'), api('ai_prompts?select=*&order=id.asc')]);
+    aiConfigRow = cfgs[0] || null;
+    aiPromptRows = prompts;
+  } catch (e) { body.innerHTML = `<div class="admin-section span2"><p class="empty-hint">加载失败：${escHtml(shortErr(e.message))}</p></div>`; return; }
+  if (!aiConfigRow) { body.innerHTML = '<div class="admin-section span2"><p class="empty-hint">ai_config 表为空，请检查迁移脚本是否完整执行</p></div>'; return; }
+  const c = aiConfigRow;
+  let promptsHtml = aiPromptRows.map(p => `
+    <div style="border:1px solid #ede9e0;border-radius:12px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700">${escHtml(p.description || p.task_key)}</span>
+        <span style="font-size:11px;color:#bbb;font-family:monospace">${escHtml(p.task_key)}</span>
+      </div>
+      <textarea class="af-ta" id="prompt-ta-${p.id}" rows="5">${escHtml(p.system_prompt)}</textarea>
+      <div class="phase-btns" style="margin-top:8px">${phaseBtn('保存提示词', 'primary', `savePrompt(${p.id})`)}</div>
+    </div>`).join('');
+  body.innerHTML = `
+    <div class="admin-section">
+      <div class="as-title">模型服务配置</div>
+      <div class="as-row"><span class="as-label">API 密钥状态</span><span class="as-value" id="ai-key-status">${c.api_key_hint ? '已配置 ' + escHtml(c.api_key_hint) : '未检测'}</span></div>
+      <label class="af-label">服务商</label><input class="af-input" id="aic-provider" value="${escHtml(c.provider)}">
+      <label class="af-label">接口地址 Base URL</label><input class="af-input" id="aic-baseurl" value="${escHtml(c.base_url)}">
+      <label class="af-label">模型名称</label><input class="af-input" id="aic-model" value="${escHtml(c.model)}">
+      <div class="as-row" style="margin-top:12px"><span class="as-label">启用 AI 提炼</span>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aic-enabled" ${c.enabled ? 'checked' : ''}> 启用</label></div>
+      <div class="phase-btns" style="margin-top:10px">
+        ${phaseBtn('保存配置', 'primary', 'saveAiConfig()')}
+        ${phaseBtn('检测密钥连通', '', 'pingAi()')}
+      </div>
+      <div class="ai-hint">API Key 本体不存数据库：请在 Supabase 控制台 → Edge Functions → Secrets 中设置 <b>AI_API_KEY</b>。此处仅显示密钥后 4 位；修改模型名 / 地址实时生效，无需重新部署函数。</div>
+    </div>
+    <div class="admin-section">
+      <div class="as-title">测试提炼 <span style="font-size:11px;color:#bbb;font-weight:400">调提示词时用它快速验证效果</span></div>
+      <textarea class="af-ta" id="ai-test-in" rows="4" placeholder="输入一段样例想法，例如：我觉得AI最应该帮我们自动整理会议纪要…"></textarea>
+      <div class="phase-btns" style="margin-top:10px">${phaseBtn('运行测试 ✦', 'gold', 'testExtract()')}</div>
+      <div class="ai-test-out" id="ai-test-out"></div>
+    </div>
+    <div class="admin-section span2">
+      <div class="as-title">任务提示词管理 <span style="font-size:11px;color:#bbb;font-weight:400">决定大模型在各活动中"扮演什么角色"，可随时编辑</span></div>
+      ${promptsHtml || '<p class="empty-hint">暂无提示词</p>'}
+    </div>`;
+}
+async function saveAiConfig() {
+  if (!aiConfigRow) return;
+  try {
+    await api(`ai_config?id=eq.${aiConfigRow.id}`, 'PATCH', {
+      provider: document.getElementById('aic-provider').value.trim(),
+      base_url: document.getElementById('aic-baseurl').value.trim(),
+      model: document.getElementById('aic-model').value.trim(),
+      enabled: document.getElementById('aic-enabled').checked,
+    });
+    showToast('AI 配置已保存，即刻生效 ✓');
+  } catch (e) { showToast('保存失败：' + shortErr(e.message), 3600); }
+}
+async function pingAi() {
+  showToast('检测中…');
+  try {
+    const res = await fetch(FN_AI, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }, body: JSON.stringify({ task_key: 'ping' }) });
+    const j = await res.json();
+    if (j.ok && j.key_configured) { showToast('密钥已配置，链路正常 ✓'); buildAdminTab('ai'); }
+    else if (j.ok) { showToast('函数正常，但 AI_API_KEY 未配置', 4000); }
+    else showToast('检测失败：' + (j.error || res.status), 4000);
+  } catch (e) { showToast('无法连接 Edge Function：' + shortErr(e.message), 4000); }
+}
+async function savePrompt(id) {
+  const ta = document.getElementById('prompt-ta-' + id);
+  if (!ta || !ta.value.trim()) { showToast('提示词不能为空'); return; }
+  try {
+    await api(`ai_prompts?id=eq.${id}`, 'PATCH', { system_prompt: ta.value.trim() });
+    showToast('提示词已保存，下一次提炼即生效 ✓');
+  } catch (e) { showToast('保存失败：' + shortErr(e.message), 3600); }
+}
+async function testExtract() {
+  const content = document.getElementById('ai-test-in').value.trim();
+  if (!content) { showToast('请先输入样例文字'); return; }
+  const out = document.getElementById('ai-test-out');
+  out.style.display = 'block';
+  out.innerHTML = '<span class="kw-pending">⚡ AI 提炼中…</span>';
+  try {
+    const res = await fetch(FN_AI, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }, body: JSON.stringify({ task_key: 'survey_extract', test_content: content }) });
+    const j = await res.json();
+    if (j.ok && j.keywords) out.innerHTML = '<div style="font-size:11px;color:#aaa;margin-bottom:8px">提炼结果：</div><div class="entry-kws">' + j.keywords.map(k => `<span class="kw-chip">${escHtml(k)}</span>`).join('') + '</div>';
+    else out.innerHTML = `<span class="kw-failed">失败：${escHtml(j.error || String(res.status))}</span>`;
+  } catch (e) { out.innerHTML = `<span class="kw-failed">请求失败：${escHtml(shortErr(e.message))}</span>`; }
+}
+
+/* ═══════════════ 打印导出（浏览器打印 → 另存为 PDF）═══════════════ */
+function openPrintWindow(title, bodyHtml) {
+  const w = window.open('', '_blank');
+  if (!w) { showToast('浏览器拦截了新窗口，请允许弹窗后重试', 3600); return; }
+  w.document.write(`<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>${escHtml(title)}</title>
+<style>
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;color:#1a1a2e;max-width:760px;margin:0 auto;padding:36px 28px;font-size:13px}
+h1{font-size:22px;margin-bottom:4px}
+.sub{font-size:12px;color:#888;margin-bottom:6px}
+.meta{font-size:11px;color:#aaa;margin-bottom:24px;padding-bottom:14px;border-bottom:2px solid #1a1a2e}
+h2{font-size:14px;margin:24px 0 10px;padding-left:8px;border-left:3px solid #4a3fd4}
+table{width:100%;border-collapse:collapse;margin-bottom:14px}
+th{font-size:11px;color:#888;text-align:left;padding:7px 8px;border-bottom:1.5px solid #ccc}
+td{font-size:12px;padding:8px;border-bottom:1px solid #eee;vertical-align:top;word-break:break-all;line-height:1.55}
+.rank{color:#aaa;width:28px}.score{font-weight:700;white-space:nowrap}
+.chip{display:inline-block;font-size:11px;font-weight:700;color:#4a3fd4;background:#eeeefe;border-radius:12px;padding:1px 8px;margin:1px 3px 1px 0}
+.printbtn{position:fixed;top:14px;right:16px;padding:10px 20px;border-radius:22px;border:none;background:#4a3fd4;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+@media print{.printbtn{display:none}}
+</style></head><body>
+<button class="printbtn" onclick="window.print()">打印 / 另存为 PDF</button>
+${bodyHtml}
+</body></html>`);
+  w.document.close();
+}
+async function printIdeasResults(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  const scenes = await api(`scenes?activity_id=eq.${actId}&select=*`);
+  const votes = await api(`votes?activity_id=eq.${actId}&select=scene_id,voter_id`);
+  const gw = Math.max(1, parseInt(cfg(act, 'guest_weight', 2), 10) || 2);
+  const nc = {}, gc = {};
+  votes.forEach(v => { if (v.voter_id.startsWith('guest_')) gc[v.scene_id] = (gc[v.scene_id] || 0) + 1; else nc[v.scene_id] = (nc[v.scene_id] || 0) + 1; });
+  const valid = scenes.filter(s => (s.name || '').trim() !== '').map(s => ({ ...s, score: (nc[s.id] || 0) + (gc[s.id] || 0) * gw }));
+  valid.sort((a, b) => b.score - a.score);
+  const nStr = window.prompt('导出前多少名？（输入数字，留空导出全部）', '10');
+  const topN = nStr && parseInt(nStr, 10) > 0 ? valid.slice(0, parseInt(nStr, 10)) : valid;
+  let rows = topN.map((s, i) => `<tr>
+    <td class="rank">${i + 1}</td>
+    <td><b>${escHtml(s.name)}</b>${s.time_saving ? `<br><span style="color:#b7770d;font-size:11px">⏱ ${escHtml(s.time_saving)}</span>` : ''}
+      ${s.ai_solution ? `<br><span style="color:#1a8a6e;font-size:11px">方案：</span><span style="font-size:11px">${escHtml(s.ai_solution)}</span>` : ''}
+      ${s.pain_point ? `<br><span style="color:#888;font-size:11px">痛点：</span><span style="font-size:11px">${escHtml(s.pain_point)}</span>` : ''}</td>
+    <td>${groupLabel(s.group_index)}</td>
+    <td class="score">${s.score} 分<br><span style="font-weight:400;font-size:10px;color:#888">普 ${nc[s.id] || 0} / 嘉 ${gc[s.id] || 0}</span></td>
+  </tr>`).join('');
+  openPrintWindow(act.title + ' · 结果导出', `
+    <h1>${escHtml(act.title)}</h1>
+    <div class="sub">${escHtml(act.subtitle || '')}</div>
+    <div class="meta">思路征集 · Top ${topN.length} 结果 · 嘉宾票权重 ×${gw} · 导出于 ${new Date().toLocaleString('zh-CN')}${act.archived_at ? ' · 数据已封板' : ''}</div>
+    <table><tr><th>#</th><th>场景</th><th>小组</th><th>得分</th></tr>${rows}</table>`);
+}
+async function printSurveyResults(actId) {
+  const act = allActivities.find(a => a.id === actId);
+  if (!act) return;
+  const entries = await api(`survey_entries?activity_id=eq.${actId}&select=*&order=created_at.asc`);
+  const freq = {};
+  entries.forEach(e => { if (e.status === 'done' && Array.isArray(e.keywords)) e.keywords.forEach(k => { const t = String(k).trim(); if (t) freq[t] = (freq[t] || 0) + 1; }); });
+  const kws = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+  const voters = new Set(entries.map(e => e.voter_id));
+  const kwRows = kws.slice(0, 20).map(([k, n], i) => `<tr><td class="rank">${i + 1}</td><td><b>${escHtml(k)}</b></td><td class="score">×${n}</td></tr>`).join('');
+  const entryRows = entries.map((e, i) => `<tr><td class="rank">${i + 1}</td><td>${escHtml(e.content)}</td><td>${Array.isArray(e.keywords) ? e.keywords.map(k => `<span class="chip">${escHtml(k)}</span>`).join('') : '<span style="color:#aaa;font-size:11px">未提炼</span>'}</td></tr>`).join('');
+  openPrintWindow(act.title + ' · 调查结果', `
+    <h1>${escHtml(act.title)}</h1>
+    <div class="sub">${escHtml(cfg(act, 'prompt_text', act.subtitle || ''))}</div>
+    <div class="meta">民意调查 · 参与 ${voters.size} 人 · 收到 ${entries.length} 条想法 · 提炼出 ${kws.length} 个关键词 · 导出于 ${new Date().toLocaleString('zh-CN')}${act.archived_at ? ' · 数据已封板' : ''}</div>
+    <h2>TOP 关键词</h2>
+    <table><tr><th>#</th><th>关键词</th><th>出现次数</th></tr>${kwRows || '<tr><td colspan="3">暂无</td></tr>'}</table>
+    <h2>全部想法（${entries.length} 条）</h2>
+    <table><tr><th>#</th><th>内容</th><th>AI 提炼</th></tr>${entryRows || '<tr><td colspan="3">暂无</td></tr>'}</table>`);
+}
+
+/* ═══════════════ 实时同步（Realtime 主通道 + 5s 轮询兜底）═══════════════ */
+function scheduleSync() {
+  clearTimeout(syncDebounce);
+  syncDebounce = setTimeout(syncFromRemote, 350);
+}
+async function syncFromRemote() {
+  if (syncing) return;
+  syncing = true;
+  try {
+    await loadActivities();
+    if (curView === 'lobby') { await loadLobbyCounts(); renderLobby(); }
+    else if (curView === 'ideas' && curAct) {
+      const prevStatus = curAct.status;
+      await Promise.all([loadScenes(curAct.id), loadVotes(curAct.id)]);
+      const statusChanged = allActivities.find(a => a.id === curAct.id)?.status !== prevStatus;
+      curAct = allActivities.find(a => a.id === curAct.id) || curAct;
+      if (statusChanged) { routeIdeas(true); showToast('活动进入「' + statusMeta(curAct)[0] + '」阶段'); }
+      else if (editingSceneId === null) {
+        const active = document.querySelector('#ideas-tabbar .tab.active');
+        const name = active ? active.id.replace('tab-', '') : 'board';
+        if (name === 'submit') renderSceneList();
+        if (name === 'vote') renderVoteList();
+        if (name === 'board') renderBoard();
+      }
+    }
+    else if (curView === 'survey' && curAct) {
+      const prevStatus = curAct.status;
+      await loadSurveyEntries(curAct.id);
+      const fresh = allActivities.find(a => a.id === curAct.id) || curAct;
+      const statusChanged = fresh.status !== prevStatus;
+      curAct = fresh;
+      if (statusChanged) { routeSurvey(); showToast(curAct.status === 'ended' ? '本期填报已截止' : '活动进入「' + statusMeta(curAct)[0] + '」阶段'); }
+      else {
+        renderSurveyStats(); renderSurveyInput();
+        if (svyEditingId === null) renderSurveyMine();
+        renderSurveySummary();
+        if (!surveyReadonly()) sweepPendingEntries();
+      }
+    }
+    else if (curView === 'projection' && projActId) {
+      await loadSurveyEntries(projActId);
+      renderProjection(false);
+    }
+  } catch (_) {}
+  finally { syncing = false; }
+}
+function startSync() {
+  if (pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(scheduleSync, 5000);
+  try {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sbChannel = sbClient.channel('salon-live');
+    ['activities', 'scenes', 'votes', 'participants', 'survey_entries'].forEach(tbl => {
+      sbChannel.on('postgres_changes', { event: '*', schema: 'public', table: tbl }, scheduleSync);
+    });
+    sbChannel.subscribe();
+  } catch (_) {}
+}
+
+/* ═══════════════ 初始化 ═══════════════ */
+async function init() {
+  const tip = document.getElementById('loading-tip');
+  try {
+    tip.textContent = '正在加载活动数据…';
+    await loadActivities();
+    await loadLobbyCounts();
+    startSync();
+    const params = new URLSearchParams(location.search);
+    const projId = parseInt(params.get('proj') || '', 10);
+    if (projId && allActivities.find(a => a.id === projId)) {
+      enterProjection(projId);
+    } else {
+      goLobby();
+    }
+    document.getElementById('loading').classList.add('hide');
+  } catch (e) {
+    tip.textContent = '连接失败：' + shortErr(e.message) + '（请检查网络后刷新）';
+  }
+}
+init();
+</script>
+</body>
+</html>
